@@ -11,7 +11,8 @@ export function init() {
   loadList();
   const want = new URLSearchParams(location.search).get('t');
   pick(want || api.FART, true);
-  on('perps', () => { fillPerpSelect(); fillPx(); hedgeCalc(); pxCalc(); tickers(); if (S.list === 'perps') loadList(); if (S.under === 'perp') under(); });
+  const onPerps = () => { try { tickers(); fillPerpSelect(); fillPx(); hedgeCalc(); pxCalc(); if (S.list === 'perps') loadList(); if (S.under === 'perp') under(); } catch (e) { console.error(e); } };
+  on('perps', onPerps); if (api.perps.list.length) onPerps();             // the first read may land before this module does
   on('mids', debounce(() => { hedgeCalc(); pxCalc(); drawHL(); tickerMids(); }, 800));
   on('sol', () => { pills(); apeBtn(); loadBag(); });
   on('evm', () => { pills(); hedgeBtn(); loadHL(); });

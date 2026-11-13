@@ -5,6 +5,7 @@ import * as api from './api.js';
 
 export function init() {
   on('perps', P => { tape(P); board(); calcPerps(); });
+  if (api.perps.list.length) { tape(api.perps); board(); calcPerps(); }
   on('mids', () => { tapeMids(); boardMids(); });
   hedgeStory(); calc(); memes('1h'); wall(); faq();
   $('#perpSet').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#perpSet button').forEach(x => x.classList.toggle('on', x === b)); B.set = b.dataset.set; board(); };
