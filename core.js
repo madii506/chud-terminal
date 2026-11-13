@@ -46,6 +46,7 @@ export function num(v, d = 2) {
   if (!ok(v)) return '—'; const a = Math.abs(v);
   if (a >= 1e9) return (v / 1e9).toFixed(d) + 'B'; if (a >= 1e6) return (v / 1e6).toFixed(d) + 'M'; if (a >= 1e4) return (v / 1e3).toFixed(1) + 'K';
   if (a >= 1) return v.toLocaleString('en-US', { maximumFractionDigits: a >= 100 ? 0 : 2 });
+  if (a === 0) return '0';
   return v.toPrecision(3);
 }
 export const solscan = (x, kind = 'tx') => `https://solscan.io/${kind}/${x}`;

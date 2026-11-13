@@ -527,3 +527,7 @@ html.muted #navSound .x,html.muted .snd .x{display:inline}
 a.wbtn{color:inherit}
 @media (max-width:980px){.rails{grid-template-columns:repeat(3,1fr)}.pulse{grid-template-columns:repeat(2,1fr)}}
 @media (max-width:620px){.rails{grid-template-columns:repeat(2,1fr)}.socials{display:none}}
+
+.tok-id .lp{display:inline-flex;max-width:none;overflow:visible}
+.tok-id .lp img{display:block}
+.via{white-space:nowrap}

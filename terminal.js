@@ -514,6 +514,6 @@ function pulse(t) {
   const box = $('#pulse'); if (!box) return;
   box.innerHTML = [['5m', t.s5m], ['1h', t.s1h], ['6h', t.s6h], ['24h', t.s24h]].map(([k, s]) => {
     s = s || {}; const vol = (s.buyVolume || 0) + (s.sellVolume || 0), bs = vol ? (s.buyVolume || 0) / vol * 100 : 50;
-    return `<div><div class="pr"><span>${k}</span><b class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</b></div><div class="pv"><span>${usd(vol)}</span><span>${num(s.numTraders || 0, 1)} traders</span></div><div class="pb"><i style="width:${bs.toFixed(0)}%"></i></div><div class="pv"><span class="up">${bs.toFixed(0)}% buys</span><span class="${cls(s.numNetBuyers)}">${s.numNetBuyers > 0 ? '+' : ''}${num(s.numNetBuyers || 0, 1)} net</span></div></div>`;
+    return `<div><div class="pr"><span>${k}</span><b class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</b></div><div class="pv"><span>${usd(vol)}</span><span>${Math.round(s.numTraders || 0).toLocaleString('en-US')} traders</span></div><div class="pb"><i style="width:${bs.toFixed(0)}%"></i></div><div class="pv"><span class="up">${bs.toFixed(0)}% buys</span><span class="${cls(s.numNetBuyers)}">${s.numNetBuyers > 0 ? '+' : ''}${Math.round(s.numNetBuyers || 0).toLocaleString('en-US')} net</span></div></div>`;
   }).join('');
 }
