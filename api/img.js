@@ -73,7 +73,7 @@ module.exports = async (req, res) => {
   let u = null;
   if (raw) { try { u = new URL(raw); } catch { u = null; } }
   if (!u && !mint) { res.statusCode = 400; return res.end(); }
-  let got = u && u.protocol === 'https:' ? await first(mirrors(u), 5500) : null;
+  let got = u && u.protocol === 'https:' ? await first(mirrors(u), mint ? 4000 : 6000) : null;   // with a mint there is a plan B, so give up on a dead link sooner
   if (!got && mint) got = await gecko(mint, Math.max(1500, 9000 - (Date.now() - t0)));
   if (!got) {
     res.statusCode = 404;
