@@ -651,3 +651,7 @@ html.fs .fs-x{display:inline-flex;align-items:center;gap:8px;position:fixed;left
 html.fs .fs-x:hover{color:var(--ink);border-color:var(--ink)}
 html.fs .fs-x .kbd{margin:0}
 .al-dir{font-style:normal;font-size:11.5px;min-width:62px;text-align:center}
+
+/* v8: a hairline ring so dark logos (Fartcoin, ETH) read as a coin, not an empty hole */
+img.ic,img.ci,.tok-ic{box-sizing:border-box;border:1px solid rgba(255,255,255,.16)}
+.tok-ic img{border:0}
