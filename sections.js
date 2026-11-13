@@ -61,7 +61,7 @@ async function memes(tf) {
     box.innerHTML = list.map(t => {
       const s = t['s' + tf] || {}, perp = api.MINT_PERP[t.mint];
       const flow = (s.buyVolume || 0) + (s.sellVolume || 0), buys = flow ? (s.buyVolume || 0) / flow * 100 : null;
-      return `<button class="card" data-m="${esc(t.mint)}" type="button"><div class="card-h">${icon(t.icon, t.symbol)}<div><b>${esc(t.symbol)}</b><span>${esc(t.name)}</span></div></div>
+      return `<button class="card" data-m="${esc(t.mint)}" type="button"><div class="card-h">${icon(t.icon, t.symbol, t.mint)}<div><b>${esc(t.symbol)}</b><span>${esc(t.name)}</span></div></div>
         <div class="card-p"><b>${px(t.price)}</b><em class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</em></div>
         <div class="card-m"><div>Mcap<b>${usd(t.mcap)}</b></div><div>Liquidity<b>${usd(t.liq)}</b></div><div>Volume ${tf}<b>${usd(flow)}</b></div><div>Traders<b>${num(s.numTraders || 0, 1)}</b></div></div>
         <div class="pb"><i style="width:${buys != null ? buys.toFixed(0) : 50}%"></i></div>

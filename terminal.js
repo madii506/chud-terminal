@@ -50,7 +50,7 @@ async function loadList() {
     S.trend = list;
     $('#trendRows').innerHTML = list.map(t => {
       const ch = (t['s' + tf] || {}).priceChange;
-      return `<button class="trow ${S.tok && S.tok.mint === t.mint ? 'on' : ''}" data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol)}<div><b>${esc(t.symbol)}</b><span>${usd(t.mcap)}</span></div><em class="${cls(ch)}">${pct(ch, 1)}</em></button>`;
+      return `<button class="trow ${S.tok && S.tok.mint === t.mint ? 'on' : ''}" data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol, t.mint)}<div><b>${esc(t.symbol)}</b><span>${usd(t.mcap)}</span></div><em class="${cls(ch)}">${pct(ch, 1)}</em></button>`;
     }).join('') || '<p class="empty mono" style="padding:12px">Nothing trending right now.</p>';
     emit('trending', list);
   } catch { $('#trendRows').innerHTML = '<p class="empty mono" style="padding:12px">Jupiter is not answering. Try again in a moment.</p>'; }
@@ -66,7 +66,7 @@ function bindSearch() {
     const my = ++seq;
     try {
       const r = (await api.search(v)).slice(0, 12); if (my !== seq) return;
-      box.innerHTML = r.length ? r.map(t => `<button data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol)}<div class="r-n"><b>${esc(t.symbol)} ${t.verified ? '<span style="color:var(--g)">✓</span>' : ''}</b><span>${esc(t.name)} · ${short(t.mint)}</span></div><div class="r-v">${usd(t.mcap)}<br>${api.MINT_PERP[t.mint] ? '<span style="color:var(--g)">perp</span>' : ''}</div></button>`).join('') : '<p class="empty mono" style="padding:14px">No match. Paste the mint to be sure.</p>';
+      box.innerHTML = r.length ? r.map(t => `<button data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol, t.mint)}<div class="r-n"><b>${esc(t.symbol)} ${t.verified ? '<span style="color:var(--g)">✓</span>' : ''}</b><span>${esc(t.name)} · ${short(t.mint)}</span></div><div class="r-v">${usd(t.mcap)}<br>${api.MINT_PERP[t.mint] ? '<span style="color:var(--g)">perp</span>' : ''}</div></button>`).join('') : '<p class="empty mono" style="padding:14px">No match. Paste the mint to be sure.</p>';
       box.hidden = false;
     } catch { box.hidden = true; }
   }, 300);
@@ -85,7 +85,7 @@ async function pick(mint, first) {
   if (!t) { if (first && mint !== api.FART) return pick(api.FART); if (!first) toast('That mint was not found on Jupiter.', 'err'); else { $('#tokName').textContent = 'Jupiter is not answering'; setTimeout(() => pick(mint, true), 8000); } return; }
   S.tok = t;
   $$('#trendRows .trow').forEach(b => b.classList.toggle('on', b.dataset.m === mint));
-  $('#tokIc').innerHTML = t.icon ? `<img src="${esc(img(t.icon))}" alt="" referrerpolicy="no-referrer">` : esc(t.symbol.slice(0, 3));
+  $('#tokIc').innerHTML = `<img src="${esc(img(t.icon, t.mint))}" alt="" referrerpolicy="no-referrer" onerror="this.replaceWith(document.createTextNode(${esc(JSON.stringify((t.symbol || "?").slice(0, 3)))}))">`;
   $('#tokSym').textContent = t.symbol; const lp = venue(t.launchpad);
   $('#tokName').innerHTML = esc(t.name) + (t.launchpad ? ` <span class="lp">${lp ? `<img src="${brand(lp)}" alt="">` : ''}${esc(t.launchpad)}</span>` : '');
   $('#tokSoc').innerHTML = [[t.twitter, 'x.com'], [t.telegram, 'telegram.org'], [t.website, host(t.website)]].filter(([u]) => /^https:\/\//.test(u || '')).map(([u, d]) => `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(host(u))}"><img src="${brand(d)}" alt=""></a>`).join('');
@@ -249,7 +249,7 @@ async function loadBag() {
     S.bag = Object.fromEntries(rows.map(r => [r.mint, r]));
     S.bagTot = rows.reduce((s, r) => s + r.usd, 0);
     $('#bagTot').textContent = usd(S.bagTot) + (solUi ? ' · ' + solUi.toFixed(3) + ' SOL' : '');
-    $('#bagRows').innerHTML = rows.length ? rows.slice(0, 30).map(r => `<div class="drow bag">${icon(r.icon, r.sym)}<b>${esc(r.sym)}</b><span>${usd(r.usd)}</span><em class="${cls(r.ch)}">${pct(r.ch, 1)}</em><button data-m="${esc(r.mint)}" type="button">Hedge</button></div>`).join('') : `<p class="empty mono">No memes in this wallet yet. ${solUi ? 'You have ' + solUi.toFixed(3) + ' SOL to ape with.' : ''}</p>`;
+    $('#bagRows').innerHTML = rows.length ? rows.slice(0, 30).map(r => `<div class="drow bag">${icon(r.icon, r.sym, r.mint)}<b>${esc(r.sym)}</b><span>${usd(r.usd)}</span><em class="${cls(r.ch)}">${pct(r.ch, 1)}</em><button data-m="${esc(r.mint)}" type="button">Hedge</button></div>`).join('') : `<p class="empty mono">No memes in this wallet yet. ${solUi ? 'You have ' + solUi.toFixed(3) + ' SOL to ape with.' : ''}</p>`;
     $('#bagRows').onclick = e => { const b = e.target.closest('button'); if (!b) return; pick(b.dataset.m); setTab('hedge'); const r = S.bag[b.dataset.m]; if (r) { $('#hgBag').value = Math.round(r.usd); hedgeCalc(); } };
     if (S.tok && S.bag[S.tok.mint] && S.side === 'sell') apeMode();
     net();
@@ -495,7 +495,7 @@ async function listWatch() {
   if (!w.length) { $('#trendRows').innerHTML = '<p class="empty mono" style="padding:12px">Star a coin (☆ next to its name) to keep it here.</p>'; return; }
   const list = await api.tokens(w).catch(() => []), by = Object.fromEntries(list.map(t => [t.mint, t]));
   S.trend = [...(S.trend || []), ...list];
-  $('#trendRows').innerHTML = w.map(m => by[m]).filter(Boolean).map(t => { const ch = (t.s24h || {}).priceChange; return `<button class="trow ${S.tok && S.tok.mint === t.mint ? 'on' : ''}" data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol)}<div><b>${esc(t.symbol)}</b><span>${usd(t.mcap)}</span></div><em class="${cls(ch)}">${pct(ch, 1)}</em></button>`; }).join('');
+  $('#trendRows').innerHTML = w.map(m => by[m]).filter(Boolean).map(t => { const ch = (t.s24h || {}).priceChange; return `<button class="trow ${S.tok && S.tok.mint === t.mint ? 'on' : ''}" data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol, t.mint)}<div><b>${esc(t.symbol)}</b><span>${usd(t.mcap)}</span></div><em class="${cls(ch)}">${pct(ch, 1)}</em></button>`; }).join('');
 }
 let bookT = 0;
 async function drawBook(coin) {

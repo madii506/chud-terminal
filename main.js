@@ -9,10 +9,9 @@ const html = document.documentElement;
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
 // ---------------------------------------------------------------- the intro: chud walks a gallery of old pump.fun memes to his PC, logs in
-const MEME_MINTS = ['9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump', 'CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', '2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump',
-  'ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', 'GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump', '8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn',
-  'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', '3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump', '5mbK36SZ7J19An8jFochhQS4of8g6BwUjbeCSxBSoWdp',
-  '6D7NaB2xsLd7cauWu1wKk6KBsJohJmP2qZH9GEfVi5Ui', '8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5', '25hAyBQfoDhfWx9ay6rarbgvWGwDdNqcHsXS3jQ3mTDJ'];
+// the paintings: twelve old pump.fun memes, kept on this site so every frame is filled from the first second
+const MEMES = ['FARTCOIN', 'GOAT', 'PNUT', 'MOODENG', 'ACT', 'ZEREBRO', 'FWOG', 'BILLY', 'MICHI', 'SC', 'LOCKIN', 'MANEKI']
+  .map((symbol, i) => ({ symbol, icon: `/meme-${String(i).padStart(2, '0')}.webp?v=1` }));
 const soundOn = () => store.get('chud:sound', true) !== false;
 html.classList.toggle('muted', !soundOn());
 let AUD = null;
@@ -34,17 +33,16 @@ const introDone = new Promise(res => {
     ctrl && ctrl.skip();
   });
   addEventListener('keydown', e => { if (!done && /Escape|Enter| /.test(e.key)) ctrl && ctrl.skip(); });
-  const memes = api.tokens(MEME_MINTS).then(l => MEME_MINTS.map(m => l.find(t => t.mint === m)).filter(Boolean).map(t => ({ symbol: t.symbol, icon: t.icon }))).catch(() => []);
-  // the paintings are fetched, decoded and cut square before the lights come on, so every frame is filled from the first second
-  const art = memes.then(list => Promise.all(list.map(t => new Promise(r => {
-    if (!t.icon) return r(null);
+  // fetched and decoded before the lights come on; anything still on its way is hung by the gallery itself when it lands
+  const ready = [];
+  const art = MEMES.map((m, i) => new Promise(r => {
     const im = new Image(); im.decoding = 'async';
-    im.onload = async () => { try { await im.decode(); } catch {} const c = document.createElement('canvas'); c.width = c.height = 512; const s = Math.min(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 512, 512); r(c); };
-    im.onerror = () => r(null); im.src = '/api/img?u=' + encodeURIComponent(t.icon);
-  })))).catch(() => []);
+    im.onload = async () => { try { await im.decode(); } catch {} const c = document.createElement('canvas'); c.width = c.height = 512; const s = Math.min(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 512, 512); ready[i] = c; r(c); };
+    im.onerror = () => r(null); im.src = m.icon;
+  }));
   const wait = (p, ms, d) => Promise.race([p, new Promise(r => setTimeout(() => r(d), ms))]);
-  Promise.all([import('./intro3d.js?v=1'), wait(Promise.all([memes, art]), 3800, null)])
-    .then(async ([m, got]) => { const [list, imgs] = got || [await wait(memes, 400, []), []]; ctrl = await m.run({ canvas: cv, memes: list, images: imgs || [], face: '/favicon-192.png?v=1', onDone: end, audio: { step: k => AUD && AUD.step(k), light: i => AUD && AUD.light(i), sit: () => AUD && AUD.sit(), chair: () => AUD && AUD.chair(), boot: () => AUD && AUD.boot(), key: () => AUD && AUD.key(), ok: () => AUD && AUD.ok(), dive: () => AUD && AUD.dive() } }); })
+  Promise.all([import('./intro3d.js?v=8'), wait(Promise.all(art), 3800, null)])
+    .then(async ([m]) => { ctrl = await m.run({ canvas: cv, memes: MEMES, images: MEMES.map((_, i) => ready[i] || null), face: '/favicon-192.png?v=1', onDone: end, audio: { step: k => AUD && AUD.step(k), light: i => AUD && AUD.light(i), sit: () => AUD && AUD.sit(), chair: () => AUD && AUD.chair(), boot: () => AUD && AUD.boot(), key: () => AUD && AUD.key(), ok: () => AUD && AUD.ok(), dive: () => AUD && AUD.dive() } }); })
     .catch(end);
   setTimeout(end, 32000);                                     // never hold the page hostage
 });
@@ -208,7 +206,7 @@ function drawPal(coins) {
   const v = $('#palQ').value.trim().toLowerCase();
   const acts = ACTIONS.filter(a => !v || (a[0] + ' ' + a[2]).toLowerCase().includes(v));
   palItems = [...coins.map(t => ({ coin: t })), ...acts.map(a => ({ act: a }))]; palSel = 0;
-  $('#palList').innerHTML = (coins.length ? '<p class="ph">Coins</p>' + coins.map((t, i) => `<button type="button" data-i="${i}">${icon(t.icon, t.symbol)}<b>${esc(t.symbol)} <span class="muted" style="font-weight:400">${esc(t.name)}</span></b><em>${usd(t.mcap)}</em></button>`).join('') : '')
+  $('#palList').innerHTML = (coins.length ? '<p class="ph">Coins</p>' + coins.map((t, i) => `<button type="button" data-i="${i}">${icon(t.icon, t.symbol, t.mint)}<b>${esc(t.symbol)} <span class="muted" style="font-weight:400">${esc(t.name)}</span></b><em>${usd(t.mcap)}</em></button>`).join('') : '')
     + (acts.length ? '<p class="ph">Actions</p>' + acts.map((a, i) => `<button type="button" data-i="${coins.length + i}"><span class="k">${a[1]}</span><b>${esc(a[0])}</b><em>${esc(a[2])}</em></button>`).join('') : '')
     || '<p class="ph">Nothing matches. Paste a mint to look it up.</p>';
   hlPal();

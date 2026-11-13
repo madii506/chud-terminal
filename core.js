@@ -55,9 +55,15 @@ export function toast(msg, kind = '', ms = 6000) {
   $('#toasts').appendChild(t); setTimeout(() => { t.style.transition = 'opacity .4s'; t.style.opacity = '0'; setTimeout(() => t.remove(), 450); }, ms);
 }
 export async function copy(text) { try { await navigator.clipboard.writeText(text); toast('Copied', 'ok', 2500); } catch { toast('Copy failed. Select it by hand.', 'err'); } }
-export const img = url => (/^https:\/\//.test(url || '') ? '/api/img?u=' + encodeURIComponent(url) : url);
-export function icon(url, label) {
-  const l = esc((label || '?').slice(0, 3)); url = img(url);
+// token art through our proxy; with the mint it can still find the logo when the link itself is dead
+export const img = (url, mint) => {
+  const q = [];
+  if (/^https:\/\//.test(url || '')) q.push('u=' + encodeURIComponent(url));
+  if (mint && /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(mint)) q.push('m=' + mint);
+  return q.length ? '/api/img?' + q.join('&') : (url || '');
+};
+export function icon(url, label, mint) {
+  const l = esc((label || '?').slice(0, 3)); url = img(url, mint);
   return url ? `<img class="ic" src="${esc(url)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.outerHTML='<span class=&quot;ic&quot;>${l}</span>'">` : `<span class="ic">${l}</span>`;
 }
 export function debounce(f, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms); }; }
