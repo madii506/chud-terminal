@@ -563,3 +563,20 @@ a.wbtn{color:inherit}
 #pxType{width:100%}#pxType button{flex:1}
 @media (max-width:1180px){.market-in{grid-template-columns:1fr}.mk-r{order:-1}.mk-r .chud-stage{width:min(380px,80vw)}}
 @media (max-width:760px){.mstats{grid-template-columns:1fr 1fr}.heat{height:360px}#trF{display:none}}
+
+/* v6 polish */
+:focus-visible{outline:2px solid var(--g);outline-offset:2px}
+button:focus:not(:focus-visible),a:focus:not(:focus-visible){outline:none}
+.tl b,.tl em,.tl .tp{text-shadow:0 1px 6px rgba(0,0,0,.55)}
+.heat{height:470px}
+.heat-h .muted{font-size:11px}
+.mstats>div{transition:border-color .2s}
+.mstats>div:hover{border-color:var(--line2)}
+.term{box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.trow{transition:background .15s,padding-left .2s}
+.trow:hover{padding-left:16px}
+.card .badge{transition:border-color .2s}
+.tick{transition:border-color .2s,transform .2s}
+.tick:hover{transform:translateY(-1px)}
+.band{padding:120px 0}
+@media (max-width:620px){.band{padding:80px 0}.heat{height:380px}}

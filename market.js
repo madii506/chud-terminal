@@ -20,14 +20,14 @@ function paint() {
   $('#msOI').textContent = usd(oi); $('#msVol').textContent = usd(vol); $('#msTop').innerHTML = top ? `top: ${esc(top.name)} <span class="${cls(top.chg)}">${pct(top.chg, 1)}</span>` : '—';
   const f = $('#msFund'); f.textContent = (fund >= 0 ? '+' : '') + fund.toFixed(1) + '%'; f.className = cls(fund);
   const box = $('#heat'), W = box.clientWidth, H = box.clientHeight; if (!W || !H) return;
-  const items = L.map(p => ({ p, v: Math.max(1, by === 'oi' ? p.oi : p.vol) })).sort((a, b) => b.v - a.v).slice(0, 28);
+  const items = L.map(p => ({ p, v: Math.max(1, by === 'oi' ? p.oi : p.vol) })).sort((a, b) => b.v - a.v).slice(0, 22);
   const rects = squarify(items, 0, 0, W, H);
   box.innerHTML = rects.map(({ p, x, y, w, h }) => {
     const c = Math.max(-12, Math.min(12, p.chg || 0)) / 12, a = .18 + Math.abs(c) * .62;
     const bg = c >= 0 ? `rgba(31,157,85,${a.toFixed(2)})` : `rgba(200,49,61,${a.toFixed(2)})`;
-    const big = w > 110 && h > 70, mid = w > 64 && h > 44;
+    const big = w > 120 && h > 84, mid = w > 70 && h > 52, tiny = w < 46 || h < 30;
     return `<button class="tl ${big ? 'big' : mid ? 'mid' : 'sm'}" type="button" data-c="${esc(p.name)}" data-ch="${p.chg || 0}" style="left:${x.toFixed(1)}px;top:${y.toFixed(1)}px;width:${(w - 3).toFixed(1)}px;height:${(h - 3).toFixed(1)}px;background:${bg}" title="${esc(p.name)} ${pct(p.chg)}">
-      ${mid ? coinIcon(p.name, 'hi') : ''}<b>${esc(p.name)}</b>${mid ? `<em>${pct(p.chg, 1)}</em>` : ''}${big ? `<span class="tp">${px(api.mids[p.name] || p.mark)}</span>` : ''}</button>`;
+      ${mid ? coinIcon(p.name, 'hi') : ''}${tiny ? '' : `<b>${esc(p.name)}</b>`}${mid ? `<em>${pct(p.chg, 1)}</em>` : ''}${big ? `<span class="tp">${px(api.mids[p.name] || p.mark)}</span>` : ''}</button>`;
   }).join('');
   if (!drawn) { drawn = true; gsap.from($$('#heat .tl'), { scale: .6, opacity: 0, duration: .7, ease: 'back.out(1.5)', stagger: { each: .02, from: 'start' }, scrollTrigger: { trigger: '#heat', start: 'top 85%', once: true } }); }
 }
