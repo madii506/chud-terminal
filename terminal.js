@@ -1,9 +1,9 @@
 // CHUD · the terminal: find a meme, chart it, ape it through Jupiter, hedge it on Hyperliquid, watch the net
-import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, img, debounce, parseNum, toast, solscan, short, store, ok, brand, coinIcon, venue, host, ago } from './core.js';
+import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, img, debounce, parseNum, toast, solscan, short, store, ok, brand, coinIcon, venue, host, ago, copy } from './core.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
 
-const S = { tok: null, tf: '15m', side: 'buy', tab: 'ape', perp: null, lev: 3, bag: {}, bagTot: 0, hl: null, candles: [], trendTf: '1h' };
+const S = { tok: null, tf: '15m', side: 'buy', tab: 'ape', perp: null, lev: W.settings().lev || 3, bag: {}, bagTot: 0, hl: null, candles: [], trendTf: '1h' };
 const LAMPORTS = 1e9;
 
 export function init() {
@@ -22,6 +22,8 @@ export function init() {
   setInterval(() => { if (S.tok && document.visibilityState === 'visible') loadChart(); }, 45000);
   setInterval(() => { if (S.under === 'trades' && document.visibilityState === 'visible') under(); }, 12000);
   $('#hedgeAll').onclick = hedgeAll;
+  bindDesk();
+  window.__chud = { tok: () => S.tok, perp: () => (S.tab === 'perps' ? S.px : S.perp) || 'SOL', setLev: v => { S.lev = v; hedgeCalc(); } };
   window.__chudPick = (mint, tab) => { pick(mint); if (tab) setTab(tab); };
   window.__chudHedgePerp = name => { setTab('hedge'); S.perp = name; fillPerpSelect(); hedgeCalc(); };
   window.__chudPerp = (name, side) => { S.px = name; fillPx(); S.pxSide = side; $$('#pxSide button').forEach(x => x.classList.toggle('on', x.dataset.s === side)); setTab('perps'); pxCalc(); };
@@ -334,12 +336,13 @@ async function loadHL() {
 function drawHL() {
   const s = S.hl; if (!s) return;
   $('#hlTot').textContent = usd(s.equity) + ' equity';
-  const rows = s.pos.map(p => { const m = api.mids[p.coin]; const up = m ? (m - p.entry) * p.szi : p.upnl; return `<div class="drow hl"><b>${coinIcon(p.coin, 'ci')}${p.szi < 0 ? '<span class="dn">SHORT</span>' : '<span class="up">LONG</span>'} ${esc(p.coin)}</b><span>${usd(Math.abs(p.val))}${p.lev ? ' · ' + p.lev + 'x' : ''}</span><span class="${cls(up)}">${usd(up)}</span><button data-c="${esc(p.coin)}" type="button">Close</button></div>`; }).join('');
+  const rows = s.pos.map(p => { const m = api.mids[p.coin]; const up = m ? (m - p.entry) * p.szi : p.upnl; return `<div class="drow hl"><b>${coinIcon(p.coin, 'ci')}${p.szi < 0 ? '<span class="dn">SHORT</span>' : '<span class="up">LONG</span>'} ${esc(p.coin)}</b><span>${usd(Math.abs(p.val))}${p.lev ? ' · ' + p.lev + 'x' : ''}</span><span class="${cls(up)}">${usd(up)}</span><span class="acts"><button data-tp="${esc(p.coin)}" type="button">TP/SL</button><button data-c="${esc(p.coin)}" type="button">Close</button></span></div>`; }).join('');
   const fund = s.equity < 1 && s.spotUsdc >= 1 ? `<p class="empty mono">${usd(s.spotUsdc)} USDC sits in your spot balance. <button class="btn btn-sm btn-line" id="toPerps" type="button" style="margin-top:8px">Move it to perps</button></p>` : s.equity < 1 ? '<p class="empty mono">No USDC on Hyperliquid yet. <a href="https://app.hyperliquid.xyz/trade" target="_blank" rel="noopener" style="text-decoration:underline">Deposit there</a>, then come back.</p>' : '';
   $('#hlRows').innerHTML = rows || fund || '<p class="empty mono">No open positions.</p>';
   if (rows && fund) $('#hlRows').insertAdjacentHTML('beforeend', fund);
   $('#hlRows').onclick = async e => {
-    const c = e.target.closest('button[data-c]');
+    const c = e.target.closest('button[data-c]'), tp = e.target.closest('button[data-tp]');
+    if (tp) return openTpsl(tp.dataset.tp);
     if (e.target.id === 'toPerps') { try { await W.moveToPerps(Math.floor(s.spotUsdc * 100) / 100); toast('USDC moved to perps.', 'ok'); setTimeout(loadHL, 1500); } catch (err) { toast(esc(err.message), 'err'); } return; }
     if (!c) return;
     const p = api.perps.by[c.dataset.c], pos = s.pos.find(x => x.coin === c.dataset.c); if (!p || !pos) return;
@@ -475,6 +478,8 @@ function bindKeys() {
     if (document.documentElement.classList.contains('intro')) return;
     if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
     else if (e.key === 'a') setTab('ape'); else if (e.key === 'h') setTab('hedge'); else if (e.key === 'p') setTab('perps');
+    else if (e.key === 'b' || e.key === 's') { setTab('ape'); const b = $(`#apeSide button[data-s=${e.key === 'b' ? 'buy' : 'sell'}]`); b && b.click(); }
+    else if (e.key === 'w') $('#tokStar').click();
   });
 }
 
@@ -547,13 +552,101 @@ function nearest(arr, t) { let lo = 0, hi = arr.length - 1; if (hi < 0) return n
 async function loadOO() {
   if (!W.evm.address) return;
   try {
-    const oo = await api.openOrders(W.evm.address);
+    const oo = await api.openOrders(W.evm.address); S.oo = oo;
     $('#ooN').textContent = oo.length ? oo.length + ' open' : '';
-    $('#ooRows').innerHTML = oo.length ? oo.slice(0, 12).map(o => `<div class="drow hl"><b>${coinIcon(o.coin, 'ci')}<span class="${o.side === 'B' ? 'up' : 'dn'}">${o.side === 'B' ? 'BUY' : 'SELL'}</span> ${esc(o.coin)}</b><span>${num(+o.sz, 3)} @ ${px(+o.limitPx)}</span><span>${esc(o.orderType || 'Limit')}</span><button data-oid="${o.oid}" data-c="${esc(o.coin)}" type="button">Cancel</button></div>`).join('') : '<p class="empty mono">No open orders.</p>';
+    $('#ooRows').innerHTML = oo.length ? oo.slice(0, 12).map(o => `<div class="drow hl"><b>${coinIcon(o.coin, 'ci')}<span class="${o.side === 'B' ? 'up' : 'dn'}">${o.side === 'B' ? 'BUY' : 'SELL'}</span> ${esc(o.coin)}</b><span>${num(+o.sz, 3)} @ ${px(+(o.isTrigger ? o.triggerPx : o.limitPx))}</span><span>${esc(o.isTrigger ? (/take/i.test(o.orderType || '') ? 'TP' : 'SL') : (o.orderType || 'Limit'))}</span><button data-oid="${o.oid}" data-c="${esc(o.coin)}" type="button">Cancel</button></div>`).join('') : '<p class="empty mono">No open orders.</p>';
     $('#ooRows').onclick = async e => {
       const b = e.target.closest('button[data-oid]'); if (!b) return; const p = api.perps.by[b.dataset.c]; if (!p) return;
       b.disabled = true; b.textContent = '…';
       try { await W.cancelOrder(p, +b.dataset.oid); toast(`Cancelled ${esc(p.name)} order.`, 'ok', 4000); setTimeout(loadOO, 800); } catch (err) { toast(esc(err.message), 'err'); b.disabled = false; b.textContent = 'Cancel'; }
     };
   } catch {}
+}
+
+// ---------------------------------------------------------------- v6: desk actions (close all, cancel all, refresh), TP/SL, quick actions on the coin
+// a destructive button arms on the first click and runs on the second, within 4 seconds
+function armed(b, idle, label) {
+  if (b.dataset.arm === '1') { clearTimeout(b._t); b.dataset.arm = ''; b.classList.remove('arm'); return true; }
+  b.dataset.arm = '1'; b.classList.add('arm'); b.textContent = label;
+  b._t = setTimeout(() => { b.dataset.arm = ''; b.classList.remove('arm'); b.textContent = idle; }, 4000);
+  return false;
+}
+function bindDesk() {
+  $('#closeAll').onclick = closeAll;
+  $('#cancelAll').onclick = cancelAllOrders;
+  $('#refreshHL').onclick = async e => {
+    const b = e.currentTarget; b.classList.add('spin');
+    await Promise.all([loadHL(), loadBag()]).catch(() => {});
+    setTimeout(() => b.classList.remove('spin'), 500);
+  };
+  $('#tokCopy').onclick = () => { if (S.tok) copy(S.tok.mint); };
+  $('#tokBell').onclick = () => window.__tools && window.__tools.openAlerts();
+  $('#tokShare').onclick = () => window.__tools && window.__tools.share();
+}
+async function closeAll() {
+  const b = $('#closeAll'), L = S.hl ? S.hl.pos.filter(p => p.szi) : [];
+  if (!W.evm.address) return window.__wallets();
+  if (!L.length) return toast('No open positions.', '', 2500);
+  if (!armed(b, 'Close all', `Confirm: close ${L.length}`)) return;
+  b.disabled = true; b.textContent = 'Closing…';
+  try {
+    if (!W.agent()) await W.approveAgent();
+    let done = 0; const errs = [];
+    for (const pos of L) {
+      const p = api.perps.by[pos.coin]; if (!p) { errs.push(pos.coin + ': not loaded'); continue; }
+      try { await W.marketOrder(p, pos.szi < 0, Math.abs(pos.szi), { reduceOnly: true }); done++; } catch (e) { errs.push(pos.coin + ': ' + e.message); }
+    }
+    toast(done ? `Closed ${done} of ${L.length} position${L.length > 1 ? 's' : ''}.${errs.length ? ' ' + esc(errs.join(' · ')) : ''}` : esc(errs.join(' · ') || 'Nothing closed.'), done && !errs.length ? 'ok' : 'err', 9000);
+  } catch (e) { toast(esc(e.message || String(e)), 'err'); }
+  b.disabled = false; b.textContent = 'Close all'; setTimeout(loadHL, 1200);
+}
+async function cancelAllOrders() {
+  const b = $('#cancelAll'), L = S.oo || [];
+  if (!W.evm.address) return window.__wallets();
+  if (!L.length) return toast('No open orders.', '', 2500);
+  if (!armed(b, 'Cancel all orders', `Confirm: cancel ${L.length}`)) return;
+  b.disabled = true; b.textContent = 'Cancelling…';
+  try {
+    if (!W.agent()) await W.approveAgent();
+    const r = await W.cancelAll(L, api.perps.by), st = (r && r.data && r.data.statuses) || [], bad = st.filter(x => x && x.error);
+    toast(bad.length ? `Cancelled ${st.length - bad.length}. ${esc(bad[0].error)}` : `Cancelled ${st.length || L.length} order${(st.length || L.length) > 1 ? 's' : ''}.`, bad.length ? 'err' : 'ok', 6000);
+  } catch (e) { toast(esc(e.message || String(e)), 'err'); }
+  b.disabled = false; b.textContent = 'Cancel all orders'; setTimeout(loadOO, 900);
+}
+// take profit / stop loss on one position: reduce-only triggers that close it at market on Hyperliquid
+function openTpsl(coin) {
+  const s = S.hl, pos = s && s.pos.find(x => x.coin === coin), p = api.perps.by[coin]; if (!pos || !p) return;
+  const long = pos.szi > 0, mark = api.mids[coin] || p.mark, sz = Math.abs(pos.szi), sug = k => +(mark * (1 + k)).toPrecision(5);
+  $('#mTitle').textContent = `TP / SL · ${coin}`;
+  const box = $('#mBody');
+  box.innerHTML = `<div class="m-sec"><span>${long ? 'Long' : 'Short'} ${num(sz, 4)} ${esc(coin)} · entry ${px(pos.entry)} · mark ${px(mark)}${pos.liq ? ' · liq ' + px(pos.liq) : ''}</span>
+    <div class="seg seg-sm tp-q" id="tpQ"><button type="button" data-k=".05">±5%</button><button type="button" data-k=".1" class="on">±10%</button><button type="button" data-k=".25">±25%</button><button type="button" data-k=".5">±50%</button></div>
+    <label class="tp-f"><em>Take profit</em><input id="tpPx" type="text" inputmode="decimal" autocomplete="off" value="${sug(long ? .1 : -.1)}"><b id="tpPnl">—</b></label>
+    <label class="tp-f"><em>Stop loss</em><input id="slPx" type="text" inputmode="decimal" autocomplete="off" value="${sug(long ? -.05 : .05)}"><b id="slPnl">—</b></label>
+    <p class="m-note">Each one closes the whole position at market when the mark price touches it. Leave one empty to skip it.</p>
+    <button class="btn btn-g tp-go" id="tpGo" type="button">${W.agent() ? 'Set on Hyperliquid' : 'Approve session key, then set'}</button></div>`;
+  const calc = () => {
+    for (const [i, o] of [['#tpPx', '#tpPnl'], ['#slPx', '#slPnl']]) { const v = parseNum($(i).value), pl = (v - pos.entry) * pos.szi; $(o).innerHTML = v > 0 ? `<span class="${cls(pl)}">${pl >= 0 ? '+' : ''}${usd(pl)}</span>` : '—'; }
+  };
+  box.oninput = calc; calc();
+  box.onclick = async e => {
+    const q = e.target.closest('#tpQ button');
+    if (q) { $$('#tpQ button').forEach(x => x.classList.toggle('on', x === q)); const k = +q.dataset.k; $('#tpPx').value = sug(long ? k : -k); $('#slPx').value = sug(long ? -k / 2 : k / 2); return calc(); }
+    if (!e.target.closest('#tpGo')) return;
+    const tp = parseNum($('#tpPx').value), sl = parseNum($('#slPx').value), now = api.mids[coin] || p.mark;
+    if (!(tp > 0) && !(sl > 0)) return toast('Set a take profit, a stop loss, or both.', 'err', 4000);
+    if (tp > 0 && (long ? tp <= now : tp >= now)) return toast(`Take profit has to be ${long ? 'above' : 'below'} the mark (${px(now)}).`, 'err', 5000);
+    if (sl > 0 && (long ? sl >= now : sl <= now)) return toast(`Stop loss has to be ${long ? 'below' : 'above'} the mark (${px(now)}).`, 'err', 5000);
+    if (sl > 0 && pos.liq && (long ? sl <= pos.liq : sl >= pos.liq)) return toast(`That stop is past your liquidation price (${px(pos.liq)}).`, 'err', 5000);
+    const go = $('#tpGo'); go.disabled = true;
+    try {
+      if (!W.agent()) { go.textContent = 'Sign in your wallet…'; await W.approveAgent(); }
+      go.textContent = 'Sending…';
+      const done = await W.tpsl(p, pos.szi, tp, sl);
+      toast(`${esc(coin)}: ${done.map(k => k.toUpperCase()).join(' and ')} set on Hyperliquid.`, 'ok', 6000);
+      $('#modal').hidden = true; setTimeout(loadOO, 900);
+    } catch (err) { toast(esc(err.message || String(err)), 'err', 9000); go.disabled = false; go.textContent = 'Set on Hyperliquid'; }
+  };
+  $('#modal').hidden = false;
+  setTimeout(() => $('#tpPx').focus(), 30);
 }

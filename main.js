@@ -3,6 +3,7 @@ import { $, $$, on, emit, esc, reduced, store, short, toast, CONFIG, copy, px, p
 import { smooth, scrollTo, revealAll, rise, gsap, ScrollTrigger } from './motion.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
+import * as T from './tools.js';
 
 const html = document.documentElement;
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
@@ -18,7 +19,8 @@ let AUD = null;
 const introDone = new Promise(res => {
   const el = $('#intro'), cv = $('#introCv');
   const webgl = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
-  const skip = /[?&]nointro\b/.test(location.search) || reduced() || !webgl;
+  const force = /[?&]intro\b/.test(location.search);
+  const skip = /[?&]nointro\b/.test(location.search) || (!force && store.get('chud:set', {}).intro === false) || reduced() || !webgl;
   let done = false, ctrl = null;
   const end = () => { if (done) return; done = true; html.classList.remove('intro'); if (AUD) AUD.fade(1.6); res(); setTimeout(() => el.remove(), 1300); };
   if (skip || !cv) return end();
@@ -107,7 +109,7 @@ if (CONFIG.ca) {
 
 // ---------------------------------------------------------------- wallet modal (both sides in one place)
 export function openWallets(focus) {
-  const m = $('#modal'), b = $('#mBody');
+  const m = $('#modal'), b = $('#mBody'); $('#mTitle').textContent = 'Connect';
   const draw = () => {
     const sw = W.sol.list, ew = W.evm.list.length ? W.evm.list : (W.legacyEvm() ? [{ info: { uuid: 'legacy', name: 'Browser wallet', icon: '' } }] : []);
     const ag = W.agent();
@@ -161,7 +163,8 @@ const tools = {
   palette: () => openPalette(),
   watch: () => { goTerm(); setTimeout(() => { const b = $('#listTab button[data-l=watch]'); b && b.click(); }, 300); },
   pos: () => scrollTo('.desk', { offset: -90 }),
-  replay: () => { location.href = location.pathname; },
+  replay: () => { location.href = location.pathname + '?intro'; },
+  alerts: () => T.openAlerts(), settings: () => T.openSettings(), share: () => T.share(), keys: () => T.openKeys(), full: () => T.full(),
   sound: () => { const on = !soundOn(); store.set('chud:sound', on); html.classList.toggle('muted', !on); toast(on ? 'Sound on. You will hear it on the next intro.' : 'Sound off.', '', 2500); },
 };
 $('#navK').onclick = tools.palette; $('#navWatch').onclick = tools.watch; $('#navPos').onclick = tools.pos; $('#navReplay').onclick = tools.replay; $('#navSound').onclick = tools.sound;
@@ -183,6 +186,14 @@ const ACTIONS = [
   ['How a hedge works', '◑', 'real prices, last 7 days', () => scrollTo('#hedge', { offset: -10 })],
   ['Hedge math', '∑', 'size it before you click', () => scrollTo('#math', { offset: -10 })],
   ['Make your chud', '☺', 'render one and save the PNG', () => scrollTo('#maker', { offset: -10 })],
+  ['Price alerts', 'L', 'ring when a coin or perp crosses a price', tools.alerts],
+  ['Close all positions', '⨯', 'every Hyperliquid position, at market', () => { tools.pos(); setTimeout(() => $('#closeAll').click(), 900); }],
+  ['Cancel all orders', '⊘', 'every open order and trigger', () => { tools.pos(); setTimeout(() => $('#cancelAll').click(), 900); }],
+  ['Share this coin', '⇗', 'copy a link that opens it here', tools.share],
+  ['Copy the mint', 'CA', 'contract address of the coin on screen', () => $('#tokCopy').click()],
+  ['Full-screen terminal', 'F', 'nothing but the desk', tools.full],
+  ['Settings', ',', 'slippage, leverage, intro, layout', tools.settings],
+  ['Keyboard shortcuts', '?', 'every key the terminal knows', tools.keys],
   ['Replay the intro', '▶', 'walk the gallery again', tools.replay],
   ['Sound on or off', '♪', 'for the intro', tools.sound],
   ['FAQ', '?', 'questions chuds ask', () => scrollTo('#faq', { offset: -10 })],
@@ -223,8 +234,9 @@ smooth();
 if (html.classList.contains('intro') && window.__lenis) window.__lenis.stop();
 api.loadPerps().catch(() => {}); setInterval(() => api.loadPerps().catch(() => {}), 30000);
 api.liveMids();
+T.init();
 heroLive(); setInterval(heroLive, 60000);
-import('./terminal.js?v=1').then(m => m.init()).catch(e => console.error(e));
+import('./terminal.js?v=7').then(m => m.init()).catch(e => console.error(e));
 import('./sections.js?v=1').then(m => m.init()).catch(e => console.error(e));
 import('./maker.js?v=1').then(m => m.init()).catch(e => console.error(e));
 

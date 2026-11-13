@@ -113,7 +113,8 @@ async function l1(action) {
   catch (e) { if (/does not exist|not authorized|agent/i.test(e.message)) { forgetAgent(); throw new Error('Your session key expired. Approve it again.'); } throw e; }
 }
 // a market order = an IOC limit at a 3% worse price, Hyperliquid style
-export async function marketOrder(p, isBuy, size, { reduceOnly = false, lev = null, slip = .03 } = {}) {
+export const settings = () => ({ slip: .03, lev: 3, intro: true, compact: false, ...store.get('chud:set', {}) });
+export async function marketOrder(p, isBuy, size, { reduceOnly = false, lev = null, slip = settings().slip } = {}) {
   if (lev) await l1(H.leverageAction(p.asset, Math.min(lev, p.maxLev), !p.onlyIso));
   const mid = api.mids[p.name] || p.mid || p.mark;
   const price = H.pxRound(mid * (isBuy ? 1 + slip : 1 - slip), p.szDec);
@@ -145,4 +146,22 @@ export async function cancelOrder(p, oid) {
   const st = res && res.data && res.data.statuses && res.data.statuses[0];
   if (st && st.error) throw new Error(st.error);
   return st;
+}
+
+// take profit and stop loss on an open position: reduce-only triggers that fire as market orders
+export async function tpsl(p, szi, tp, sl) {
+  const close = szi < 0, sz = Math.abs(szi), out = [];
+  for (const [px, kind] of [[tp, 'tp'], [sl, 'sl']]) {
+    if (!(px > 0)) continue;
+    const lim = H.pxRound(px * (close ? 1.1 : .9), p.szDec);
+    const res = await l1(H.triggerAction(p.asset, close, lim, H.szRound(sz, p.szDec), H.pxRound(px, p.szDec), kind));
+    const st = res && res.data && res.data.statuses && res.data.statuses[0]; if (st && st.error) throw new Error(st.error);
+    out.push(kind);
+  }
+  return out;
+}
+export async function cancelAll(orders, by) {
+  const cancels = orders.map(o => ({ a: by[o.coin] && by[o.coin].asset, o: o.oid })).filter(c => c.a != null);
+  if (!cancels.length) return null;
+  return l1({ type: 'cancel', cancels });
 }

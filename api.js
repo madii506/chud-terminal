@@ -93,6 +93,7 @@ export async function tokens(mints) {
   for (let i = 0; i < mints.length; i += 90) out.push(...await search(mints.slice(i, i + 90).join(',')).catch(() => []));
   return out;
 }
+export const price = ids => j(`${JUP}/price/v3?ids=${ids.join(',')}`);
 export const holdings = addr => j(`${JUP}/ultra/v1/holdings/${addr}`);
 export const order = p => j(`${JUP}/ultra/v1/order?` + new URLSearchParams(p).toString());
 export const execute = (signedTransaction, requestId) => j(`${JUP}/ultra/v1/execute`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ signedTransaction, requestId }) }, 60000);
