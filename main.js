@@ -7,19 +7,23 @@ import * as W from './wallet.js';
 const html = document.documentElement;
 if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
 
-// ---------------------------------------------------------------- the intro: plays once, no words, click to skip
+// ---------------------------------------------------------------- the intro: chud walks a gallery of old pump.fun memes to his PC, logs in
+const MEME_MINTS = ['9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump', 'CzLSujWBLFsSjncfkh59rUFqvafWcY5tzedWJSuypump', '2qEHjDLDLbuBgRYvsxhc5D6uDWAivNFZGan56P1tpump',
+  'ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', 'GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump', '8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn',
+  'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', '3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump', '5mbK36SZ7J19An8jFochhQS4of8g6BwUjbeCSxBSoWdp',
+  '6D7NaB2xsLd7cauWu1wKk6KBsJohJmP2qZH9GEfVi5Ui', '8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5', '25hAyBQfoDhfWx9ay6rarbgvWGwDdNqcHsXS3jQ3mTDJ'];
 const introDone = new Promise(res => {
-  const el = $('#intro'), v = $('#introVid');
-  const skip = /[?&]nointro\b/.test(location.search) || reduced();
+  const el = $('#intro'), cv = $('#introCv');
+  const webgl = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
+  const skip = /[?&]nointro\b/.test(location.search) || reduced() || !webgl;
   let done = false;
-  const end = () => { if (done) return; done = true; html.classList.remove('intro'); res(); setTimeout(() => el.remove(), 1200); };
-  if (skip || !v) return end();
-  el.addEventListener('click', end);
-  addEventListener('keydown', end, { once: true });
-  v.addEventListener('ended', () => setTimeout(end, 250));
-  v.addEventListener('error', end);
-  setTimeout(end, 9000);                                       // never hold the page hostage
-  const p = v.play(); if (p && p.catch) p.catch(end);
+  const end = () => { if (done) return; done = true; html.classList.remove('intro'); res(); setTimeout(() => el.remove(), 1300); };
+  if (skip || !cv) return end();
+  const memes = api.tokens(MEME_MINTS).then(l => MEME_MINTS.map(m => l.find(t => t.mint === m)).filter(Boolean).map(t => ({ symbol: t.symbol, icon: t.icon }))).catch(() => []);
+  Promise.all([import('./intro3d.js?v=1'), Promise.race([memes, new Promise(r => setTimeout(() => r([]), 2500))])])
+    .then(([m, list]) => m.run({ canvas: cv, memes: list, face: '/favicon-192.png?v=1', onDone: end }))
+    .catch(end);
+  setTimeout(end, 32000);                                     // never hold the page hostage
 });
 
 // ---------------------------------------------------------------- hero chud: 15 frames of a turn, two lens states
@@ -149,11 +153,14 @@ introDone.then(() => {
   if (window.__lenis) window.__lenis.start();
   window.scrollTo(0, 0);
   if (!reduced()) {
+    gsap.from('#term', { y: 30, opacity: 0, scale: .985, duration: 1.1, ease: 'expo.out' });
+    gsap.from('#tickers', { y: -12, opacity: 0, duration: .8, ease: 'power3.out', delay: .1 });
     const lines = $$('.hero .h1 .ln');
     lines.forEach(l => { l.innerHTML = `<span>${l.innerHTML}</span>`; });
-    gsap.from('.chud-stage', { scale: 1.18, opacity: 0, duration: 1.6, ease: 'expo.out' });
-    gsap.from(lines.map(l => l.firstChild), { yPercent: 110, duration: 1.15, ease: 'expo.out', stagger: .09, delay: .15 });
-    gsap.from(['.kick', '.lede', '.hero .cta', '.hero-stats', '.lens-note'], { y: 26, opacity: 0, duration: 1, ease: 'power3.out', stagger: .08, delay: .35 });
+    const tl = gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top 70%', once: true } });
+    tl.from('.chud-stage', { scale: 1.15, opacity: 0, duration: 1.5, ease: 'expo.out' })
+      .from(lines.map(l => l.firstChild), { yPercent: 110, duration: 1.1, ease: 'expo.out', stagger: .09 }, .1)
+      .from(['.kick', '.lede', '.hero .cta', '.hero-stats', '.lens-note'], { y: 26, opacity: 0, duration: .9, ease: 'power3.out', stagger: .07 }, .3);
   }
   revealAll();
   setTimeout(() => ScrollTrigger.refresh(), 800);

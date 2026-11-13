@@ -79,6 +79,10 @@ const tokMap = t => t && ({
   s5m: t.stats5m || {}, s1h: t.stats1h || {}, s6h: t.stats6h || {}, s24h: t.stats24h || {},
 });
 export const trending = (tf = '1h', limit = 40) => j(`${JUP}/tokens/v2/toptrending/${tf}?limit=${limit}`).then(a => a.map(tokMap));
+export const recent = (limit = 40) => j(`${JUP}/tokens/v2/recent?limit=${limit}`).then(a => a.map(tokMap));
+export const topOrganic = (tf = '1h', limit = 40) => j(`${JUP}/tokens/v2/toporganicscore/${tf}?limit=${limit}`).then(a => a.map(tokMap));
+export const fills = user => info({ type: 'userFills', user });
+export const poolTrades = pool => j(`${GT}/networks/solana/pools/${pool}/trades`).then(d => (d.data || []).map(x => x.attributes));
 export const search = q => j(`${JUP}/tokens/v2/search?query=${encodeURIComponent(q)}`).then(a => a.map(tokMap));
 export async function tokens(mints) {
   const out = [];
