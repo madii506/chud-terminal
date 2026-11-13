@@ -13,11 +13,11 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="CHUD">
 <meta property="og:description" content="ape memes. hedge with perps. The onchain terminal for chuds.">
-<meta property="og:image" content="https://chud-terminal.vercel.app/og.png?v=1">
+<meta property="og:image" content="https://chud-terminal-643x.vercel.app/og.png?v=1">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="CHUD">
 <meta name="twitter:description" content="ape memes. hedge with perps. The onchain terminal for chuds.">
-<meta name="twitter:image" content="https://chud-terminal.vercel.app/og.png?v=1">
+<meta name="twitter:image" content="https://chud-terminal-643x.vercel.app/og.png?v=1">
 <link rel="preload" href="/outfit.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="preload" href="/mono.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="modulepreload" href="/intro3d.js?v=1">
@@ -46,11 +46,11 @@
         </div>
         <div class="term-grid">
           <aside class="t-list">
-            <div class="t-list-h mono"><div class="seg seg-xs" id="listTab"><button data-l="trend" type="button" class="on">Hot</button><button data-l="new" type="button">New</button><button data-l="top" type="button">Top</button><button data-l="perps" type="button">Perps</button></div><div class="seg seg-xs" id="trendTf"><button data-tf="5m" type="button">5m</button><button data-tf="1h" type="button" class="on">1h</button><button data-tf="6h" type="button">6h</button><button data-tf="24h" type="button">24h</button></div></div>
+            <div class="t-list-h mono"><div class="seg seg-xs" id="listTab"><button data-l="trend" type="button" class="on">Hot</button><button data-l="new" type="button">New</button><button data-l="top" type="button">Top</button><button data-l="perps" type="button">Perps</button><button data-l="watch" type="button" aria-label="Watchlist">★</button></div><div class="seg seg-xs" id="trendTf"><button data-tf="5m" type="button">5m</button><button data-tf="1h" type="button" class="on">1h</button><button data-tf="6h" type="button">6h</button><button data-tf="24h" type="button">24h</button></div></div>
             <div class="t-rows" id="trendRows"><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div><div class="sk"></div></div>
           </aside>
           <div class="t-main">
-            <div class="tok" id="tok"><div class="tok-id"><span class="tok-ic" id="tokIc"></span><div><b id="tokSym">—</b><span id="tokName">loading</span></div></div><div class="tok-px"><b id="tokPx">—</b><em id="tokCh">—</em></div></div>
+            <div class="tok" id="tok"><div class="tok-id"><span class="tok-ic" id="tokIc"></span><div><b id="tokSym">—</b><span id="tokName">loading</span></div><button class="star" id="tokStar" type="button" aria-label="Watch this coin">☆</button></div><div class="tok-px"><b id="tokPx">—</b><em id="tokCh">—</em></div></div>
             <div class="tok-stats mono" id="tokStats"></div>
             <div class="chart-h"><div class="seg seg-xs" id="chartTf"><button data-tf="5m" type="button">5m</button><button data-tf="15m" type="button" class="on">15m</button><button data-tf="1h" type="button">1h</button><button data-tf="4h" type="button">4h</button><button data-tf="1d" type="button">1D</button></div><span class="mono muted" id="chartSrc"></span></div>
             <div class="chart" id="chart"><canvas id="chartCv"></canvas><div class="chart-tip mono" id="chartTip" hidden></div><div class="chart-empty mono" id="chartEmpty" hidden></div></div>
@@ -71,8 +71,9 @@
             <div class="pane" id="paneHedge" hidden>
               <label class="fld"><span>Hedge with</span><select id="hgPerp"></select></label>
               <p class="hint mono" id="hgHint"></p>
+              <div class="beta mono" id="hgBeta"><span>Reading how this coin moves with the market…</span></div>
               <label class="fld"><span>Bag to hedge (USD)</span><input id="hgBag" type="text" inputmode="decimal" value="500"></label>
-              <div class="slide"><div class="slide-h mono"><span>Hedge</span><b id="hgPctV">50%</b></div><input id="hgPct" type="range" min="0" max="100" step="5" value="50"></div>
+              <div class="slide"><div class="slide-h mono"><span>Hedge</span><b id="hgPctV">50%</b></div><input id="hgPct" type="range" min="0" max="200" step="5" value="50"></div>
               <div class="seg seg-sm" id="hgLev"></div>
               <div class="quote mono" id="hgOut"></div>
               <button class="btn btn-r btn-block" id="hgGo" type="button">Connect for Hyperliquid</button>

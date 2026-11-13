@@ -1,5 +1,5 @@
 // CHUD · the terminal: find a meme, chart it, ape it through Jupiter, hedge it on Hyperliquid, watch the net
-import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, debounce, parseNum, toast, solscan, short, store, ok } from './core.js';
+import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, img, debounce, parseNum, toast, solscan, short, store, ok } from './core.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
 
@@ -37,10 +37,11 @@ function pills() {
 async function loadTrending(tf) { S.trendTf = tf; return loadList(); }
 async function loadList() {
   const tf = S.trendTf || '1h', src = S.list || 'trend';
-  $('#trendTf').style.visibility = src === 'new' || src === 'perps' ? 'hidden' : '';
+  $('#trendTf').style.visibility = src === 'new' || src === 'perps' || src === 'watch' ? 'hidden' : '';
   if (src === 'perps') return listPerps();
+  if (src === 'watch') return listWatch();
   try {
-    const list = (await (src === 'new' ? api.recent(40) : src === 'top' ? api.topOrganic(tf, 40) : api.trending(tf, 40))).filter(t => t.mint && t.symbol);
+    const list = (await (src === 'new' ? api.recent(60) : src === 'top' ? api.topOrganic(tf, 60) : api.trending(tf, 60))).filter(t => t.mint && t.symbol && !/^(USD|PYUSD|EURC)|USD[A-Z]?$/i.test(t.symbol) && !/xStock|tokenized|Backpack|Securities|Ondo/i.test(t.name || '') && !/x$/.test(t.symbol) && !/^(SOL|WSOL|JitoSOL|mSOL|bSOL|JupSOL|INF|cbBTC|WBTC|WETH)$/i.test(t.symbol)).slice(0, 40);
     S.trend = list;
     $('#trendRows').innerHTML = list.map(t => {
       const ch = (t['s' + tf] || {}).priceChange;
@@ -79,7 +80,7 @@ async function pick(mint, first) {
   if (!t) { if (first && mint !== api.FART) return pick(api.FART); if (!first) toast('That mint was not found on Jupiter.', 'err'); else { $('#tokName').textContent = 'Jupiter is not answering'; setTimeout(() => pick(mint, true), 8000); } return; }
   S.tok = t;
   $$('#trendRows .trow').forEach(b => b.classList.toggle('on', b.dataset.m === mint));
-  $('#tokIc').innerHTML = t.icon ? `<img src="${esc(t.icon)}" alt="" referrerpolicy="no-referrer">` : esc(t.symbol.slice(0, 3));
+  $('#tokIc').innerHTML = t.icon ? `<img src="${esc(img(t.icon))}" alt="" referrerpolicy="no-referrer">` : esc(t.symbol.slice(0, 3));
   $('#tokSym').textContent = t.symbol; $('#tokName').textContent = t.name + (t.launchpad ? ' · ' + t.launchpad : '');
   head();
   const own = api.MINT_PERP[mint];
@@ -87,7 +88,7 @@ async function pick(mint, first) {
   if (own && !api.perps.by[own] && api.perps.list.length === 0) S.perp = own;    // perps still loading
   fillPerpSelect();
   const held = S.bag[mint]; if (held && held.usd > 1) $('#hgBag').value = Math.round(held.usd);
-  apeBtn(); apeQuote(); hedgeCalc(); loadChart(); under();
+  apeBtn(); apeQuote(); hedgeCalc(); loadChart(); under(); starBtn(); betaRun();
   if (!first) history.replaceState(null, '', '?t=' + mint + location.hash);
 }
 function head() {
@@ -98,6 +99,7 @@ function head() {
   if (ok(t.top10)) st.push(['Top 10', t.top10.toFixed(1) + '%', t.top10 > 40 ? 'bad' : '']);
   if (t.mintOff != null) st.push(['Mint auth', t.mintOff ? 'off' : 'ON', t.mintOff ? 'ok' : 'bad']);
   const own = api.MINT_PERP[t.mint]; st.push(['Perp', own && own !== 'SOL' ? own : own === 'SOL' ? 'SOL' : 'none, hedge SOL', own ? 'ok' : '']);
+  const ck = checks(t), pass = ck.filter(c => c[1]).length; st.push(['Chud check', pass + '/' + ck.length, pass >= ck.length - 1 ? 'ok' : pass <= ck.length / 2 ? 'bad' : '']);
   $('#tokStats').innerHTML = st.map(([k, v, c]) => `<div class="${c || ''}">${k}<b>${esc(v)}</b></div>`).join('');
 }
 
@@ -236,7 +238,8 @@ async function loadBag() {
 
 // ---------------------------------------------------------------- hedge (Hyperliquid)
 function bindHedge() {
-  $('#hgPerp').onchange = e => { S.perp = e.target.value; hedgeCalc(); };
+  $('#hgPerp').onchange = e => { S.perp = e.target.value; hedgeCalc(); betaRun(); };
+  $('#tokStar').onclick = () => { if (!S.tok) return; const w = store.get('chud:watch', []), i = w.indexOf(S.tok.mint); i >= 0 ? w.splice(i, 1) : w.unshift(S.tok.mint); store.set('chud:watch', w.slice(0, 60)); starBtn(); if (S.list === 'watch') loadList(); };
   $('#hgBag').addEventListener('input', hedgeCalc);
   $('#hgPct').addEventListener('input', hedgeCalc);
   $('#hgLev').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.lev = +b.dataset.l; hedgeCalc(); };
@@ -366,12 +369,12 @@ async function under() {
     const rows = [['Mint', `<a href="${links[0][1]}" target="_blank" rel="noopener">${short(t.mint)}</a>`], ['Launchpad', esc(t.launchpad || '—')], ['Verified', t.verified ? 'yes' : 'no'],
       ['Holders', num(t.holders, 1)], ['Top 10 hold', ok(t.top10) ? t.top10.toFixed(1) + '%' : '—'], ['Organic score', ok(t.organic) ? t.organic.toFixed(0) : '—'],
       ['Mint authority', t.mintOff == null ? '—' : t.mintOff ? 'revoked' : '<span class="dn">active</span>'], ['Freeze authority', t.freezeOff == null ? '—' : t.freezeOff ? 'revoked' : '<span class="dn">active</span>'], ['Links', links.slice(1).map(([n, h]) => `<a href="${h}" target="_blank" rel="noopener">${n}</a>`).join(' · ')]];
-    box.innerHTML = `<div class="infog">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`; $('#underNote').textContent = ''; return;
+    box.innerHTML = `<div class="infog">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><div class="checks">${checks(t).map(([n, y]) => `<div class="${y ? 'y' : 'n'}">${n}</div>`).join('')}</div>`; $('#underNote').textContent = 'chud check'; return;
   }
   if (u === 'perp') {
     const p = api.perps.by[S.perp] || api.perps.by.SOL; if (!p) { box.innerHTML = '<p class="empty">Reading Hyperliquid…</p>'; return; }
     const rows = [['Perp', esc(p.name)], ['Mark', px(api.mids[p.name] || p.mark)], ['24h', `<span class="${cls(p.chg)}">${pct(p.chg)}</span>`], ['Funding 1h', `<span class="${cls(p.fund)}">${(p.fund * 100).toFixed(4)}%</span>`], ['Funding APR', `<span class="${cls(p.apr)}">${p.apr.toFixed(1)}%</span>`], ['Open interest', usd(p.oi)], ['Volume 24h', usd(p.vol)], ['Max leverage', p.maxLev + 'x'], ['Shorts', p.fund >= 0 ? 'get paid funding' : 'pay funding']];
-    box.innerHTML = `<div class="infog">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div>`; $('#underNote').textContent = 'the hedge you have selected'; return;
+    box.innerHTML = `<div class="infog">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><div class="book" id="book"></div>`; $('#underNote').textContent = esc(p.name) + ' · live book'; drawBook(p.name); return;
   }
   try {
     const pool = await api.topPool(t.mint); if (!pool) throw 0;
@@ -446,4 +449,56 @@ function bindKeys() {
     if (e.key === '/') { e.preventDefault(); $('#q').focus(); }
     else if (e.key === 'a') setTab('ape'); else if (e.key === 'h') setTab('hedge'); else if (e.key === 'p') setTab('perps');
   });
+}
+
+// ---------------------------------------------------------------- v3: chud check, watchlist, live order book, beta-sized hedges
+function checks(t) {
+  const liq = t.liq || 0, top = t.top10;
+  return [['Mint authority revoked', t.mintOff === true], ['Freeze authority revoked', t.freezeOff === true], ['Top 10 hold under 30%', ok(top) && top < 30],
+    ['Liquidity over $100K', liq >= 1e5], ['Over 1,000 holders', (t.holders || 0) >= 1000], ['Organic score over 50', ok(t.organic) && t.organic >= 50], ['Verified on Jupiter', !!t.verified]];
+}
+function starBtn() { const b = $('#tokStar'); if (!S.tok) return; const on = store.get('chud:watch', []).includes(S.tok.mint); b.classList.toggle('on', on); b.textContent = on ? '★' : '☆'; }
+async function listWatch() {
+  const w = store.get('chud:watch', []);
+  if (!w.length) { $('#trendRows').innerHTML = '<p class="empty mono" style="padding:12px">Star a coin (☆ next to its name) to keep it here.</p>'; return; }
+  const list = await api.tokens(w).catch(() => []), by = Object.fromEntries(list.map(t => [t.mint, t]));
+  S.trend = [...(S.trend || []), ...list];
+  $('#trendRows').innerHTML = w.map(m => by[m]).filter(Boolean).map(t => { const ch = (t.s24h || {}).priceChange; return `<button class="trow ${S.tok && S.tok.mint === t.mint ? 'on' : ''}" data-m="${esc(t.mint)}" type="button">${icon(t.icon, t.symbol)}<div><b>${esc(t.symbol)}</b><span>${usd(t.mcap)}</span></div><em class="${cls(ch)}">${pct(ch, 1)}</em></button>`; }).join('');
+}
+let bookT = 0;
+async function drawBook(coin) {
+  clearTimeout(bookT);
+  if (S.under !== 'perp' || !$('#book')) return;
+  try {
+    const b = await api.book(coin), [bids, asks] = b.levels || [[], []];
+    const rows = (lv, side) => { const L = lv.slice(0, 9), mx = Math.max(...L.map(x => +x.sz), 1e-9); return L.map(x => `<div class="bk ${side}"><i style="width:${(+x.sz / mx * 100).toFixed(0)}%"></i><span>${px(+x.px)}</span><span>${num(+x.sz, 2)}</span></div>`).join(''); };
+    if ($('#book')) $('#book').innerHTML = `<div>${rows(bids, 'b')}</div><div>${rows(asks, 'a')}</div>`;
+  } catch {}
+  if (document.visibilityState === 'visible') bookT = setTimeout(() => drawBook(coin), 3000);
+}
+// beta: how hard this coin moves with the perp, from 7 days of hourly candles. A market-neutral hedge is beta x the bag.
+const BETA = {};
+async function betaRun() {
+  const t = S.tok, perp = S.perp || 'SOL', box = $('#hgBeta'); if (!t || !box) return;
+  const key = t.mint + ':' + perp; const show = r => {
+    if (!r) { box.innerHTML = '<span>Not enough shared price history to size a beta hedge.</span>'; return; }
+    const pctN = Math.min(200, Math.max(5, Math.round(r.beta * 100 / 5) * 5));
+    box.innerHTML = `<div class="row"><span>β to ${esc(perp)} <b>${r.beta.toFixed(2)}</b> · corr <b>${r.corr.toFixed(2)}</b></span><button type="button" id="useBeta">Use β · ${pctN}%</button></div><span>${r.n} hourly moves. ${r.corr < .35 ? 'Weak link: this hedge covers little of your risk.' : r.corr < .6 ? 'Partial link: it covers market dumps, not coin-only dumps.' : 'Strong link: a beta-sized short cancels most market moves.'}</span>`;
+    $('#useBeta').onclick = () => { $('#hgPct').value = pctN; hedgeCalc(); };
+  };
+  if (BETA[key] !== undefined) return show(BETA[key]);
+  box.innerHTML = '<span>Reading how this coin moves with the market…</span>';
+  try {
+    if (api.MINT_PERP[t.mint] === perp) { BETA[key] = { beta: 1, corr: 1, n: 168 }; return show(BETA[key]); }
+    const pool = await api.topPool(t.mint); if (!pool) throw 0;
+    const [a, b] = await Promise.all([api.poolCandles(pool.address, '1h', t.mint), api.candles(perp, '1h', 8 * 864e5)]);
+    const pm = new Map(b.map(k => [Math.round(k.t / 36e5), k.c]));
+    const pairs = []; let prev = null;
+    for (const k of a) { const h = Math.round(k.t / 36e5), pc = pm.get(h); if (pc == null) { prev = null; continue; } if (prev) pairs.push([Math.log(k.c / prev[0]), Math.log(pc / prev[1])]); prev = [k.c, pc]; }
+    if (pairs.length < 24) { BETA[key] = null; return show(null); }
+    const n = pairs.length, mx = pairs.reduce((s, p) => s + p[0], 0) / n, my = pairs.reduce((s, p) => s + p[1], 0) / n;
+    let cxy = 0, vx = 0, vy = 0; for (const [x, y] of pairs) { cxy += (x - mx) * (y - my); vx += (x - mx) ** 2; vy += (y - my) ** 2; }
+    const r = { beta: cxy / (vy || 1e-12), corr: cxy / Math.sqrt((vx || 1e-12) * (vy || 1e-12)), n };
+    BETA[key] = isFinite(r.beta) ? r : null; if (S.tok === t) show(BETA[key]);
+  } catch { if (S.tok === t) box.innerHTML = '<span>Could not read candles for a beta right now.</span>'; }
 }
