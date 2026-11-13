@@ -1,5 +1,5 @@
 // CHUD · the terminal: find a meme, chart it, ape it through Jupiter, hedge it on Hyperliquid, watch the net
-import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, img, debounce, parseNum, toast, solscan, short, store, ok } from './core.js';
+import { $, $$, on, emit, esc, px, usd, pct, cls, num, icon, img, debounce, parseNum, toast, solscan, short, store, ok, brand, coinIcon, venue, host, ago } from './core.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
 
@@ -23,6 +23,7 @@ export function init() {
   $('#hedgeAll').onclick = hedgeAll;
   window.__chudPick = (mint, tab) => { pick(mint); if (tab) setTab(tab); };
   window.__chudHedgePerp = name => { setTab('hedge'); S.perp = name; fillPerpSelect(); hedgeCalc(); };
+  window.__chudPerp = (name, side) => { S.px = name; fillPx(); S.pxSide = side; $$('#pxSide button').forEach(x => x.classList.toggle('on', x.dataset.s === side)); setTab('perps'); pxCalc(); };
 }
 
 // ---------------------------------------------------------------- wallet pills above the terminal
@@ -81,7 +82,9 @@ async function pick(mint, first) {
   S.tok = t;
   $$('#trendRows .trow').forEach(b => b.classList.toggle('on', b.dataset.m === mint));
   $('#tokIc').innerHTML = t.icon ? `<img src="${esc(img(t.icon))}" alt="" referrerpolicy="no-referrer">` : esc(t.symbol.slice(0, 3));
-  $('#tokSym').textContent = t.symbol; $('#tokName').textContent = t.name + (t.launchpad ? ' · ' + t.launchpad : '');
+  $('#tokSym').textContent = t.symbol; const lp = venue(t.launchpad);
+  $('#tokName').innerHTML = esc(t.name) + (t.launchpad ? ` <span class="lp">${lp ? `<img src="${brand(lp)}" alt="">` : ''}${esc(t.launchpad)}</span>` : '');
+  $('#tokSoc').innerHTML = [[t.twitter, 'x.com'], [t.telegram, 'telegram.org'], [t.website, host(t.website)]].filter(([u]) => /^https:\/\//.test(u || '')).map(([u, d]) => `<a href="${esc(u)}" target="_blank" rel="noopener" title="${esc(host(u))}"><img src="${brand(d)}" alt=""></a>`).join('');
   head();
   const own = api.MINT_PERP[mint];
   S.perp = own && api.perps.by[own] ? own : (S.perp && api.perps.by[S.perp] ? S.perp : 'SOL');
@@ -101,6 +104,7 @@ function head() {
   const own = api.MINT_PERP[t.mint]; st.push(['Perp', own && own !== 'SOL' ? own : own === 'SOL' ? 'SOL' : 'none, hedge SOL', own ? 'ok' : '']);
   const ck = checks(t), pass = ck.filter(c => c[1]).length; st.push(['Chud check', pass + '/' + ck.length, pass >= ck.length - 1 ? 'ok' : pass <= ck.length / 2 ? 'bad' : '']);
   $('#tokStats').innerHTML = st.map(([k, v, c]) => `<div class="${c || ''}">${k}<b>${esc(v)}</b></div>`).join('');
+  pulse(t);
 }
 
 // ---------------------------------------------------------------- chart (GeckoTerminal candles, drawn on a canvas)
@@ -120,7 +124,7 @@ async function loadChart() {
     if (!pool) throw new Error('no pool');
     const c = await api.poolCandles(pool.address, S.tf, t.mint);
     if (S.chartKey !== my) return;
-    S.candles = c; $('#chartSrc').textContent = (pool.dex || '').replace(/_/g, ' ') + ' · ' + short(pool.address);
+    const vd = venue(pool.dex); S.candles = c; $('#chartSrc').innerHTML = `${vd ? `<img src="${brand(vd)}" alt="">` : ''}${esc((pool.dex || '').replace(/[_-]/g, ' '))} · ${short(pool.address)}`;
     if (!c.length) throw new Error('empty');
     drawChart();
   } catch (e) {
@@ -224,12 +228,12 @@ async function loadBag() {
     const meta = await api.tokens(toks.map(x => x.mint).slice(0, 180));
     const by = Object.fromEntries(meta.map(m => [m.mint, m]));
     const solUi = +h.uiAmount || (+h.amount || 0) / LAMPORTS, solPx = (api.perps.by.SOL || {}).mark;
-    const rows = toks.map(x => { const m = by[x.mint] || {}; return { ...x, sym: m.symbol || short(x.mint), icon: m.icon, usd: m.price ? m.price * x.ui : 0 }; })
+    const rows = toks.map(x => { const m = by[x.mint] || {}; return { ...x, sym: m.symbol || short(x.mint), icon: m.icon, usd: m.price ? m.price * x.ui : 0, ch: (m.s24h || {}).priceChange }; })
       .filter(x => x.usd >= .5).sort((a, b) => b.usd - a.usd);
     S.bag = Object.fromEntries(rows.map(r => [r.mint, r]));
     S.bagTot = rows.reduce((s, r) => s + r.usd, 0);
     $('#bagTot').textContent = usd(S.bagTot) + (solUi ? ' · ' + solUi.toFixed(3) + ' SOL' : '');
-    $('#bagRows').innerHTML = rows.length ? rows.slice(0, 30).map(r => `<div class="drow">${icon(r.icon, r.sym)}<b>${esc(r.sym)}</b><span>${usd(r.usd)}</span><button data-m="${esc(r.mint)}" type="button">Hedge</button></div>`).join('') : `<p class="empty mono">No memes in this wallet yet. ${solUi ? 'You have ' + solUi.toFixed(3) + ' SOL to ape with.' : ''}</p>`;
+    $('#bagRows').innerHTML = rows.length ? rows.slice(0, 30).map(r => `<div class="drow bag">${icon(r.icon, r.sym)}<b>${esc(r.sym)}</b><span>${usd(r.usd)}</span><em class="${cls(r.ch)}">${pct(r.ch, 1)}</em><button data-m="${esc(r.mint)}" type="button">Hedge</button></div>`).join('') : `<p class="empty mono">No memes in this wallet yet. ${solUi ? 'You have ' + solUi.toFixed(3) + ' SOL to ape with.' : ''}</p>`;
     $('#bagRows').onclick = e => { const b = e.target.closest('button'); if (!b) return; pick(b.dataset.m); setTab('hedge'); const r = S.bag[b.dataset.m]; if (r) { $('#hgBag').value = Math.round(r.usd); hedgeCalc(); } };
     if (S.tok && S.bag[S.tok.mint] && S.side === 'sell') apeMode();
     net();
@@ -310,13 +314,13 @@ async function loadHL() {
     const spotUsdc = sp && sp.balances ? +((sp.balances.find(b => b.coin === 'USDC') || {}).total || 0) : 0;
     S.hl = { equity: +a.marginSummary.accountValue, free: +a.withdrawable, pos, spotUsdc };
     drawHL(); net(); hedgeBtn(); pxCalc();
-    api.fills(W.evm.address).then(f => { $('#fillRows').innerHTML = (f || []).slice(0, 8).map(x => `<div class="drow hl"><b class="${x.side === 'B' ? 'up' : 'dn'}">${x.side === 'B' ? 'BUY' : 'SELL'} ${esc(x.coin)}</b><span>${num(+x.sz, 3)} @ ${px(+x.px)}</span><span class="${cls(+x.closedPnl)}">${+x.closedPnl ? usd(+x.closedPnl) : ''}</span><span>${new Date(x.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></div>`).join('') || '<p class="empty mono">No fills yet.</p>'; }).catch(() => {});
+    api.fills(W.evm.address).then(f => { $('#fillRows').innerHTML = (f || []).slice(0, 8).map(x => `<div class="drow hl"><b class="${x.side === 'B' ? 'up' : 'dn'}">${coinIcon(x.coin, 'ci')}${x.side === 'B' ? 'BUY' : 'SELL'} ${esc(x.coin)}</b><span>${num(+x.sz, 3)} @ ${px(+x.px)}</span><span class="${cls(+x.closedPnl)}">${+x.closedPnl ? usd(+x.closedPnl) : ''}</span><span>${new Date(x.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></div>`).join('') || '<p class="empty mono">No fills yet.</p>'; }).catch(() => {});
   } catch { $('#hlRows').innerHTML = '<p class="empty mono">Could not read Hyperliquid right now.</p>'; }
 }
 function drawHL() {
   const s = S.hl; if (!s) return;
   $('#hlTot').textContent = usd(s.equity) + ' equity';
-  const rows = s.pos.map(p => { const m = api.mids[p.coin]; const up = m ? (m - p.entry) * p.szi : p.upnl; return `<div class="drow hl"><b>${p.szi < 0 ? '<span class="dn">SHORT</span>' : '<span class="up">LONG</span>'} ${esc(p.coin)}</b><span>${usd(Math.abs(p.val))}${p.lev ? ' · ' + p.lev + 'x' : ''}</span><span class="${cls(up)}">${usd(up)}</span><button data-c="${esc(p.coin)}" type="button">Close</button></div>`; }).join('');
+  const rows = s.pos.map(p => { const m = api.mids[p.coin]; const up = m ? (m - p.entry) * p.szi : p.upnl; return `<div class="drow hl"><b>${coinIcon(p.coin, 'ci')}${p.szi < 0 ? '<span class="dn">SHORT</span>' : '<span class="up">LONG</span>'} ${esc(p.coin)}</b><span>${usd(Math.abs(p.val))}${p.lev ? ' · ' + p.lev + 'x' : ''}</span><span class="${cls(up)}">${usd(up)}</span><button data-c="${esc(p.coin)}" type="button">Close</button></div>`; }).join('');
   const fund = s.equity < 1 && s.spotUsdc >= 1 ? `<p class="empty mono">${usd(s.spotUsdc)} USDC sits in your spot balance. <button class="btn btn-sm btn-line" id="toPerps" type="button" style="margin-top:8px">Move it to perps</button></p>` : s.equity < 1 ? '<p class="empty mono">No USDC on Hyperliquid yet. <a href="https://app.hyperliquid.xyz/trade" target="_blank" rel="noopener" style="text-decoration:underline">Deposit there</a>, then come back.</p>' : '';
   $('#hlRows').innerHTML = rows || fund || '<p class="empty mono">No open positions.</p>';
   if (rows && fund) $('#hlRows').insertAdjacentHTML('beforeend', fund);
@@ -346,13 +350,13 @@ function net() {
 const TICKS = ['SOL', 'BTC', 'ETH', 'HYPE', 'FARTCOIN', 'PUMP', 'WIF', 'kBONK', 'POPCAT', 'PENGU', 'TRUMP', 'kPEPE', 'DOGE'];
 function tickers() {
   const L = TICKS.map(n => api.perps.by[n]).filter(Boolean); if (!L.length) return;
-  $('#tickers').innerHTML = L.map(p => `<div class="tick" data-p="${esc(p.name)}"><b>${esc(p.name)}</b><span class="tv">${px(api.mids[p.name] || p.mark)}</span><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em></div>`).join('');
+  $('#tickers').innerHTML = L.map(p => `<div class="tick" data-p="${esc(p.name)}">${coinIcon(p.name, 'ci')}<b>${esc(p.name)}</b><span class="tv">${px(api.mids[p.name] || p.mark)}</span><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em></div>`).join('');
   $('#tickers').onclick = e => { const t = e.target.closest('.tick'); if (t) perpRow(t.dataset.p); };
 }
 function tickerMids() { $$('#tickers .tick').forEach(t => { const v = api.mids[t.dataset.p]; if (v) t.querySelector('.tv').textContent = px(v); }); }
 function listPerps() {
   const L = api.perps.list.filter(p => p.meme).sort((a, b) => b.vol - a.vol);
-  $('#trendRows').innerHTML = L.length ? L.map(p => `<button class="trow" data-p="${esc(p.name)}" type="button"><span class="ic">${esc(p.name.replace(/^k/, '').slice(0, 3))}</span><div><b>${esc(p.name)}</b><span>${usd(p.vol)} vol · ${p.maxLev}x</span></div><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em></button>`).join('') : '<p class="empty mono" style="padding:12px">Reading Hyperliquid…</p>';
+  $('#trendRows').innerHTML = L.length ? L.map(p => `<button class="trow" data-p="${esc(p.name)}" type="button">${coinIcon(p.name)}<div><b>${esc(p.name)}</b><span>${usd(p.vol)} vol · ${p.maxLev}x</span></div><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em></button>`).join('') : '<p class="empty mono" style="padding:12px">Reading Hyperliquid…</p>';
 }
 function perpRow(name) {
   const mint = api.PERP_MINT[name];
@@ -367,8 +371,10 @@ async function under() {
     const links = [['Solscan', 'https://solscan.io/token/' + t.mint], ['DexScreener', 'https://dexscreener.com/solana/' + t.mint], ['Jupiter', 'https://jup.ag/tokens/' + t.mint]];
     if (/pump$/.test(t.mint) || /pump/i.test(t.launchpad || '')) links.push(['pump.fun', 'https://pump.fun/coin/' + t.mint]);
     const rows = [['Mint', `<a href="${links[0][1]}" target="_blank" rel="noopener">${short(t.mint)}</a>`], ['Launchpad', esc(t.launchpad || '—')], ['Verified', t.verified ? 'yes' : 'no'],
+      ['Age', t.created ? ago(t.created) : '—'], ['Graduated', t.graduated ? ago(t.graduated) + ' ago' : (/pump/i.test(t.launchpad || '') ? 'on the curve' : '—')], ['Dev wallet', t.dev ? `<a href="https://solscan.io/account/${esc(t.dev)}" target="_blank" rel="noopener">${short(t.dev)}</a>` : '—'],
+      ['Supply', num(t.total || t.circ, 2)], ['FDV', usd(t.fdv)], ['Program', t.program ? (/Tokenz/.test(t.program) ? 'Token-2022' : 'SPL Token') : '—'],
       ['Holders', num(t.holders, 1)], ['Top 10 hold', ok(t.top10) ? t.top10.toFixed(1) + '%' : '—'], ['Organic score', ok(t.organic) ? t.organic.toFixed(0) : '—'],
-      ['Mint authority', t.mintOff == null ? '—' : t.mintOff ? 'revoked' : '<span class="dn">active</span>'], ['Freeze authority', t.freezeOff == null ? '—' : t.freezeOff ? 'revoked' : '<span class="dn">active</span>'], ['Links', links.slice(1).map(([n, h]) => `<a href="${h}" target="_blank" rel="noopener">${n}</a>`).join(' · ')]];
+      ['Mint authority', t.mintOff == null ? '—' : t.mintOff ? 'revoked' : '<span class="dn">active</span>'], ['Freeze authority', t.freezeOff == null ? '—' : t.freezeOff ? 'revoked' : '<span class="dn">active</span>'], ['Links', links.slice(1).map(([n, h]) => `<a class="lk" href="${h}" target="_blank" rel="noopener"><img src="${brand(host(h))}" alt="">${n}</a>`).join(' ')]];
     box.innerHTML = `<div class="infog">${rows.map(([k, v]) => `<div><span>${k}</span><b>${v}</b></div>`).join('')}</div><div class="checks">${checks(t).map(([n, y]) => `<div class="${y ? 'y' : 'n'}">${n}</div>`).join('')}</div>`; $('#underNote').textContent = 'chud check'; return;
   }
   if (u === 'perp') {
@@ -501,4 +507,13 @@ async function betaRun() {
     const r = { beta: cxy / (vy || 1e-12), corr: cxy / Math.sqrt((vx || 1e-12) * (vy || 1e-12)), n };
     BETA[key] = isFinite(r.beta) ? r : null; if (S.tok === t) show(BETA[key]);
   } catch { if (S.tok === t) box.innerHTML = '<span>Could not read candles for a beta right now.</span>'; }
+}
+
+// pulse: the coin's last 5m / 1h / 6h / 24h at a glance (price, volume, buy share, traders, net buyers)
+function pulse(t) {
+  const box = $('#pulse'); if (!box) return;
+  box.innerHTML = [['5m', t.s5m], ['1h', t.s1h], ['6h', t.s6h], ['24h', t.s24h]].map(([k, s]) => {
+    s = s || {}; const vol = (s.buyVolume || 0) + (s.sellVolume || 0), bs = vol ? (s.buyVolume || 0) / vol * 100 : 50;
+    return `<div><div class="pr"><span>${k}</span><b class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</b></div><div class="pv"><span>${usd(vol)}</span><span>${num(s.numTraders || 0, 1)} traders</span></div><div class="pb"><i style="width:${bs.toFixed(0)}%"></i></div><div class="pv"><span class="up">${bs.toFixed(0)}% buys</span><span class="${cls(s.numNetBuyers)}">${s.numNetBuyers > 0 ? '+' : ''}${num(s.numNetBuyers || 0, 1)} net</span></div></div>`;
+  }).join('');
 }

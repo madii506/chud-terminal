@@ -77,6 +77,8 @@ const tokMap = t => t && ({
   holders: t.holderCount, verified: !!t.isVerified, organic: t.organicScore, launchpad: t.launchpad, top10: t.audit && t.audit.topHoldersPercentage,
   mintOff: t.audit ? !!t.audit.mintAuthorityDisabled : null, freezeOff: t.audit ? !!t.audit.freezeAuthorityDisabled : null,
   s5m: t.stats5m || {}, s1h: t.stats1h || {}, s6h: t.stats6h || {}, s24h: t.stats24h || {},
+  twitter: t.twitter, telegram: t.telegram, website: t.website, dev: t.dev, circ: t.circSupply, total: t.totalSupply, program: t.tokenProgram, fdv: t.fdv,
+  created: (t.firstPool && t.firstPool.createdAt) || t.createdAt, graduated: t.graduatedAt, tags: t.tags || [], organicLabel: t.organicScoreLabel,
 });
 export const trending = (tf = '1h', limit = 40) => j(`${JUP}/tokens/v2/toptrending/${tf}?limit=${limit}`).then(a => a.map(tokMap));
 export const recent = (limit = 40) => j(`${JUP}/tokens/v2/recent?limit=${limit}`).then(a => a.map(tokMap));

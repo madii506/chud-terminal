@@ -61,3 +61,15 @@ export function icon(url, label) {
 }
 export function debounce(f, ms) { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => f(...a), ms); }; }
 export function parseNum(s) { const v = parseFloat(String(s).replace(/[^0-9.]/g, '')); return isFinite(v) ? v : NaN; }
+
+// real logos, used only to say who is who: company sites by favicon, Hyperliquid coins by Hyperliquid's own icons
+export const brand = d => `https://www.google.com/s2/favicons?domain=${encodeURIComponent(d)}&sz=64`;
+export function coinIcon(name, cls = 'ic') {
+  const n = String(name || ''), alt = n.replace(/^k(?=[A-Z])/, '');
+  return `<img class="${cls}" src="https://app.hyperliquid.xyz/coins/${encodeURIComponent(n)}.svg" alt="" loading="lazy" data-alt="${esc(alt)}" onerror="if(!this.dataset.t){this.dataset.t=1;this.src='https://app.hyperliquid.xyz/coins/'+this.dataset.alt+'.svg'}else{this.replaceWith(Object.assign(document.createElement('span'),{className:'${cls}',textContent:this.dataset.alt.slice(0,3)}))}">`;
+}
+const DEX = [[/pump/, 'pump.fun'], [/raydium|launchlab/, 'raydium.io'], [/meteora|dbc|damm|dlmm/, 'meteora.ag'], [/orca|whirlpool/, 'orca.so'], [/lifinity/, 'lifinity.io'], [/phoenix/, 'phoenix.trade'],
+  [/bonk/, 'letsbonk.fun'], [/moonshot/, 'moonshot.money'], [/believe/, 'believe.app'], [/bags/, 'bags.fm'], [/heaven/, 'heaven.xyz'], [/daos/, 'daos.fun'], [/boop/, 'boop.fun'], [/jup|jupiter/, 'jup.ag'], [/fluxbeam/, 'fluxbeam.xyz'], [/saber/, 'saber.so']];
+export const venue = s => { const k = String(s || '').toLowerCase(); const m = DEX.find(([r]) => r.test(k)); return m ? m[1] : /\./.test(k) ? k : null; };
+export const host = u => { try { return new URL(u).hostname.replace(/^www\./, ''); } catch { return ''; } };
+export function ago(t) { const s = Math.max(1, (Date.now() - new Date(t).getTime()) / 1000); if (s < 3600) return Math.floor(s / 60) + 'm'; if (s < 86400) return Math.floor(s / 3600) + 'h'; if (s < 86400 * 60) return Math.floor(s / 86400) + 'd'; if (s < 86400 * 730) return Math.floor(s / 86400 / 30) + 'mo'; return (s / 86400 / 365).toFixed(1) + 'y'; }

@@ -1,5 +1,5 @@
 // CHUD · boot: the wordless intro film, the hero chud (turns to you, lenses show SOL live), nav, wallet modal
-import { $, $$, on, emit, esc, reduced, store, short, toast, CONFIG, copy, px, pct, usd, icon } from './core.js';
+import { $, $$, on, emit, esc, reduced, store, short, toast, CONFIG, copy, px, pct, usd, icon, brand } from './core.js';
 import { smooth, scrollTo, revealAll, rise, gsap, ScrollTrigger } from './motion.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
@@ -112,14 +112,14 @@ export function openWallets(focus) {
       <div class="m-sec"><span>Solana · for aping memes</span>
         ${W.sol.address ? `<button class="wbtn on" data-a="sol-off" type="button"><b>${esc(W.sol.w.name)}</b><em>${short(W.sol.address)} · disconnect</em></button>`
           : sw.length ? sw.map(w => `<button class="wbtn" data-sol="${esc(w.name)}" type="button">${w.icon ? `<img src="${esc(w.icon)}" alt="">` : ''}<b>${esc(w.name)}</b><em>connect</em></button>`).join('')
-          : `<p class="m-note">No Solana wallet in this browser. Install <a href="https://phantom.com" target="_blank" rel="noopener">Phantom</a>, Solflare or Backpack, then reload.</p>`}
+          : ['phantom.com|Phantom|https://phantom.com/download', 'solflare.com|Solflare|https://solflare.com/download', 'backpack.app|Backpack|https://backpack.app/download'].map(s => { const [d, n, u] = s.split('|'); return `<a class="wbtn" href="${u}" target="_blank" rel="noopener"><img src="${brand(d)}" alt=""><b>${n}</b><em>install ↗</em></a>`; }).join('')}
       </div>
       <div class="m-sec"><span>EVM · for hedging on Hyperliquid</span>
         ${W.evm.address ? `<button class="wbtn on" data-a="evm-off" type="button"><b>${esc(W.evm.name)}</b><em>${short(W.evm.address)} · disconnect</em></button>
             ${ag ? `<button class="wbtn on" data-a="agent-off" type="button"><b>Session key</b><em>${short(ag.address)} · forget</em></button>` : `<button class="wbtn" data-a="agent" type="button"><b>Approve session key</b><em>one signature</em></button>`}`
           : ew.length ? ew.map(d => `<button class="wbtn" data-evm="${esc(d.info.uuid)}" type="button">${d.info.icon ? `<img src="${esc(d.info.icon)}" alt="">` : ''}<b>${esc(d.info.name)}</b><em>connect</em></button>`).join('')
-          : `<p class="m-note">No EVM wallet found. Phantom's EVM account, MetaMask or Rabby all work.</p>`}
-        <p class="m-note">Hedges trade on your own Hyperliquid account. The session key can place orders, never withdraw, and lives only in this browser. Need USDC there? <a href="https://app.hyperliquid.xyz/trade" target="_blank" rel="noopener">Deposit on Hyperliquid</a>.</p>
+          : ['metamask.io|MetaMask|https://metamask.io/download', 'rabby.io|Rabby|https://rabby.io', 'phantom.com|Phantom|https://phantom.com/download'].map(s => { const [d, n, u] = s.split('|'); return `<a class="wbtn" href="${u}" target="_blank" rel="noopener"><img src="${brand(d)}" alt=""><b>${n}</b><em>install ↗</em></a>`; }).join('')}
+        <a class="wbtn" href="https://app.hyperliquid.xyz/trade" target="_blank" rel="noopener"><img src="${brand('hyperliquid.xyz')}" alt=""><b>Deposit USDC on Hyperliquid</b><em>↗</em></a>
       </div>`;
   };
   draw(); m.hidden = false;

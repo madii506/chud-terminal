@@ -1,5 +1,5 @@
 // CHUD · the sections under the terminal: live tape, the hedge explainer (real data), hedge math, perps board, trending memes, the wall
-import { $, $$, on, esc, px, usd, pct, cls, num, icon, parseNum, reduced } from './core.js';
+import { $, $$, on, esc, px, usd, pct, cls, num, icon, parseNum, reduced, coinIcon } from './core.js';
 import { gsap, ScrollTrigger } from './motion.js';
 import * as api from './api.js';
 
@@ -14,7 +14,7 @@ export function init() {
 // ---------------------------------------------------------------- tape: every meme perp, live
 function tape(P) {
   const m = P.list.filter(p => p.meme).sort((a, b) => b.vol - a.vol); if (!m.length) return;
-  const item = p => `<span class="tk" data-c="${esc(p.name)}"><b>${esc(p.name)}</b><em class="tk-p">${px(p.mark)}</em><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em><span>fund ${(p.fund * 100).toFixed(4)}%</span></span>`;
+  const item = p => `<span class="tk" data-c="${esc(p.name)}">${coinIcon(p.name, 'ci')}<b>${esc(p.name)}</b><em class="tk-p">${px(p.mark)}</em><em class="${cls(p.chg)}">${pct(p.chg, 1)}</em><span>fund ${(p.fund * 100).toFixed(4)}%</span></span>`;
   const h = m.map(item).join('');
   $('#tapeIn').innerHTML = h + h;
   $('#tapeIn').style.animationDuration = Math.max(40, m.length * 4) + 's';
@@ -29,12 +29,14 @@ function board() {
   L.sort((a, b) => { const x = val(a), y = val(b); return typeof x === 'string' ? x.localeCompare(y) * B.dir : ((x ?? -1e18) - (y ?? -1e18)) * B.dir; });
   $('#perpRows').innerHTML = L.map(p => {
     const mint = api.PERP_MINT[p.name];
-    return `<tr data-c="${esc(p.name)}"><td><div class="pn"><span class="ic">${esc(p.name.replace(/^k/, '').slice(0, 3))}</span><b>${esc(p.name)}</b>${mint && p.name !== 'SOL' ? '<small>solana</small>' : ''}</div></td><td class="m">${px(api.mids[p.name] || p.mark)}</td><td class="${cls(p.chg)}">${pct(p.chg)}</td><td class="${cls(p.fund)}">${(p.fund * 100).toFixed(4)}%</td><td class="${cls(p.apr)}">${p.apr.toFixed(1)}%</td><td>${usd(p.oi)}</td><td>${usd(p.vol)}</td><td>${p.maxLev}x</td><td><button type="button" data-h="${esc(p.name)}">Hedge</button></td></tr>`;
+    return `<tr data-c="${esc(p.name)}"><td><div class="pn">${coinIcon(p.name)}<b>${esc(p.name)}</b>${mint && p.name !== 'SOL' ? '<small>solana</small>' : ''}</div></td><td class="m">${px(api.mids[p.name] || p.mark)}</td><td class="${cls(p.chg)}">${pct(p.chg)}</td><td class="${cls(p.fund)}">${(p.fund * 100).toFixed(4)}%</td><td class="${cls(p.apr)}">${p.apr.toFixed(1)}%</td><td>${usd(p.oi)}</td><td>${usd(p.vol)}</td><td>${p.maxLev}x</td><td class="acts"><button type="button" class="lg" data-x="long" data-n="${esc(p.name)}">Long</button><button type="button" class="sh" data-x="short" data-n="${esc(p.name)}">Short</button>${mint && p.name !== 'SOL' ? `<button type="button" data-h="${esc(p.name)}">Hedge</button>` : ''}</td></tr>`;
   }).join('');
   $$('#perpTbl th').forEach(th => th.classList.toggle('sorted', th.dataset.k === B.key));
 }
 $('#perpTbl thead').onclick = e => { const th = e.target.closest('th[data-k]'); if (!th) return; if (B.key === th.dataset.k) B.dir *= -1; else { B.key = th.dataset.k; B.dir = th.dataset.k === 'name' ? 1 : -1; } board(); };
 $('#perpRows').onclick = e => {
+  const q = e.target.closest('button[data-x]');
+  if (q) { window.__chudPerp && window.__chudPerp(q.dataset.n, q.dataset.x); document.querySelector('a[href="#terminal"]').click(); return; }
   const b = e.target.closest('button[data-h]'); if (!b) return;
   const name = b.dataset.h, mint = api.PERP_MINT[name];
   if (mint && mint !== api.SOL_MINT && window.__chudPick) window.__chudPick(mint, 'hedge');
@@ -60,7 +62,8 @@ async function memes(tf) {
       const flow = (s.buyVolume || 0) + (s.sellVolume || 0), buys = flow ? (s.buyVolume || 0) / flow * 100 : null;
       return `<button class="card" data-m="${esc(t.mint)}" type="button"><div class="card-h">${icon(t.icon, t.symbol)}<div><b>${esc(t.symbol)}</b><span>${esc(t.name)}</span></div></div>
         <div class="card-p"><b>${px(t.price)}</b><em class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</em></div>
-        <div class="card-m"><div>Mcap<b>${usd(t.mcap)}</b></div><div>Liquidity<b>${usd(t.liq)}</b></div><div>Volume ${tf}<b>${usd(flow)}</b></div><div>Buys<b>${buys != null ? buys.toFixed(0) + '%' : '—'}</b></div></div>
+        <div class="card-m"><div>Mcap<b>${usd(t.mcap)}</b></div><div>Liquidity<b>${usd(t.liq)}</b></div><div>Volume ${tf}<b>${usd(flow)}</b></div><div>Traders<b>${num(s.numTraders || 0, 1)}</b></div></div>
+        <div class="pb"><i style="width:${buys != null ? buys.toFixed(0) : 50}%"></i></div>
         <span class="badge ${perp ? '' : 'no'}">${perp ? 'own perp: ' + esc(perp) : 'hedge with SOL'}</span></button>`;
     }).join('');
     if (!reduced()) gsap.fromTo($$('.card', box), { y: 30, opacity: 0 }, { y: 0, opacity: 1, duration: .7, ease: 'power3.out', stagger: .03, scrollTrigger: { trigger: box, start: 'top 88%', once: true } });
@@ -98,7 +101,7 @@ async function hedgeStory() {
     D.net = D.coin.map((v, i) => v + D.hedge[i]);
     const dd = arr => { let pk = -1e9, m = 0; for (const v of arr) { const e = 100 + v; pk = Math.max(pk, e); m = Math.min(m, (e / pk - 1) * 100); } return m; };
     $('#hedgeLeg').innerHTML = `<span><i class="sw g"></i>${coin} <b class="${cls(D.coin[n - 1])}">${pct(D.coin[n - 1], 1)}</b></span><span><i class="sw r"></i>SOL short ×${beta.toFixed(2)} <b class="${cls(D.hedge[n - 1])}">${pct(D.hedge[n - 1], 1)}</b></span><span><i class="sw" style="background:#f2f1ec"></i>net <b class="${cls(D.net[n - 1])}">${pct(D.net[n - 1], 1)}</b></span><span>worst dip: bag ${dd(D.coin).toFixed(1)}% · net ${dd(D.net).toFixed(1)}%</span>`;
-    $('#hedgeCap').textContent = `Real hourly prices from Hyperliquid, last 7 days. The SOL short is sized by ${coin}'s beta to SOL (${beta.toFixed(2)}). Before fees and funding.`;
+    $('#hedgeCap').textContent = `${coin} vs a β ${beta.toFixed(2)} SOL short · Hyperliquid · 7d hourly`;
   } catch { $('#hedgeCap').textContent = 'Hyperliquid is not answering right now.'; }
   const beats = $$('#beats li');
   if (reduced()) { prog = 1; draw(); beats.forEach(b => b.classList.add('on')); return; }
