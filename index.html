@@ -24,14 +24,14 @@
 <link rel="stylesheet" href="/app.css?v=1">
 </head>
 <body>
-<div id="intro" aria-hidden="true"><canvas id="introCv"></canvas></div>
+<div id="intro" aria-hidden="true"><canvas id="introCv"></canvas><button class="snd" id="introSnd" type="button" aria-label="Sound on or off"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button></div>
 
 <header id="nav">
   <a class="brand" href="#top" aria-label="CHUD"><img src="/favicon-64.png?v=1" alt="" width="30" height="30"><b>CHUD</b></a>
   <nav class="links"><a href="#terminal">Terminal</a><a href="#hedge">Hedge</a><a href="#perps">Perps</a><a href="#memes">Memes</a><a href="#maker">Maker</a><a href="#faq">FAQ</a></nav>
-  <div class="nav-r"><a class="nav-x" id="navX" href="#" target="_blank" rel="noopener" hidden aria-label="X">𝕏</a><button class="btn btn-ghost btn-sm" id="connectBtn" type="button"><i class="dot"></i><span>Connect</span></button><button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false"><i></i><i></i></button></div>
+  <div class="nav-r"><button class="nav-sol mono" id="navSol" type="button" title="SOL perp on Hyperliquid, live"><i></i>SOL <b>—</b></button><button class="nb" id="navK" type="button" title="Search coins and commands (⌘K)" aria-label="Search and commands"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><span class="kbd">⌘K</span></button><button class="nb" id="navWatch" type="button" title="Watchlist" aria-label="Watchlist">★</button><button class="nb" id="navPos" type="button" title="Your bag and positions" aria-label="Your positions"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="2.5"/><path d="M3.5 10h17M9 10v9"/></svg></button><button class="nb" id="navReplay" type="button" title="Replay the intro" aria-label="Replay the intro"><svg viewBox="0 0 24 24"><path d="M7 5v14l11-7z"/></svg></button><button class="nb" id="navSound" type="button" title="Sound" aria-label="Sound on or off"><svg viewBox="0 0 24 24"><path d="M4 9h4l5-4v14l-5-4H4z"/><path class="w" d="M16.5 8.5a5 5 0 0 1 0 7"/><path class="x" d="M16 9l6 6M22 9l-6 6"/></svg></button><a class="nav-x" id="navX" href="#" target="_blank" rel="noopener" hidden aria-label="X">𝕏</a><button class="btn btn-ghost btn-sm" id="connectBtn" type="button"><i class="dot"></i><span>Connect</span></button><button class="menu-btn" id="menuBtn" type="button" aria-label="Menu" aria-expanded="false"><i></i><i></i></button></div>
 </header>
-<div id="mSheet" hidden><a href="#terminal">Terminal</a><a href="#hedge">Hedge</a><a href="#perps">Perps</a><a href="#memes">Memes</a><a href="#maker">Maker</a><a href="#faq">FAQ</a></div>
+<div id="mSheet" hidden><button type="button" data-act="palette">Search ⌘K</button><button type="button" data-act="watch">Watchlist ★</button><button type="button" data-act="pos">Your positions</button><button type="button" data-act="replay">Replay the intro</button><button type="button" data-act="sound">Sound on / off</button><a href="#terminal">Terminal</a><a href="#hedge">Hedge</a><a href="#perps">Perps</a><a href="#memes">Memes</a><a href="#maker">Maker</a><a href="#faq">FAQ</a></div>
 
 <main id="top">
   <!-- 01 terminal -->
@@ -247,6 +247,7 @@
     <div class="modal-b" id="mBody"></div>
   </div>
 </div>
+<div class="pal" id="pal" hidden><div class="pal-in" role="dialog" aria-modal="true" aria-label="Search and commands"><label class="pal-q"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4-4"/></svg><input id="palQ" type="text" placeholder="Search a coin, or type a command" autocomplete="off" spellcheck="false"><span class="kbd">esc</span></label><div class="pal-list" id="palList"></div></div></div>
 <div class="toasts" id="toasts" aria-live="polite"></div>
 <script type="module" src="/main.js?v=1"></script>
 </body>

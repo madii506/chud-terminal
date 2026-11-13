@@ -1,5 +1,5 @@
 // CHUD · boot: the wordless intro film, the hero chud (turns to you, lenses show SOL live), nav, wallet modal
-import { $, $$, on, emit, esc, reduced, store, short, toast, CONFIG, copy, px, pct } from './core.js';
+import { $, $$, on, emit, esc, reduced, store, short, toast, CONFIG, copy, px, pct, usd, icon } from './core.js';
 import { smooth, scrollTo, revealAll, rise, gsap, ScrollTrigger } from './motion.js';
 import * as api from './api.js';
 import * as W from './wallet.js';
@@ -12,16 +12,29 @@ const MEME_MINTS = ['9BB6NFEcjBCtnNLFko2FqVQBq8HHM13kCyYcdQbgpump', 'CzLSujWBLFs
   'ED5nyyWEzpPPiWimP8vYm7sD7TD3LAt3Q3gRTWHzPJBY', 'GJAFwWjJ3vnTsrQVabjBVK2TYB1YtRCQXRDfDgUnpump', '8x5VqbHA8D7NkD52uNuS5nnt3PwA8pLD34ymskeSo2Wn',
   'A8C3xuqscfmyLrte3VmTqrAq8kgMASius9AFNANwpump', '3B5wuUrMEi5yATD7on46hKfej3pfmd7t1RKgrsN3pump', '5mbK36SZ7J19An8jFochhQS4of8g6BwUjbeCSxBSoWdp',
   '6D7NaB2xsLd7cauWu1wKk6KBsJohJmP2qZH9GEfVi5Ui', '8Ki8DpuWNxu9VsS3kQbarsCWMcFGWkzzA8pUPto9zBd5', '25hAyBQfoDhfWx9ay6rarbgvWGwDdNqcHsXS3jQ3mTDJ'];
+const soundOn = () => store.get('chud:sound', true) !== false;
+html.classList.toggle('muted', !soundOn());
+let AUD = null;
 const introDone = new Promise(res => {
   const el = $('#intro'), cv = $('#introCv');
   const webgl = (() => { try { return !!document.createElement('canvas').getContext('webgl2'); } catch { return false; } })();
   const skip = /[?&]nointro\b/.test(location.search) || reduced() || !webgl;
-  let done = false;
-  const end = () => { if (done) return; done = true; html.classList.remove('intro'); res(); setTimeout(() => el.remove(), 1300); };
+  let done = false, ctrl = null;
+  const end = () => { if (done) return; done = true; html.classList.remove('intro'); if (AUD) AUD.fade(1.6); res(); setTimeout(() => el.remove(), 1300); };
   if (skip || !cv) return end();
+  // creepy music, synthesized: it starts if the browser allows sound, otherwise on the first touch
+  import('./audio.js?v=1').then(m => { AUD = m.createAudio(); if (AUD && soundOn()) AUD.begin().then(() => { if (!AUD.running) $('#introSnd').classList.add('pulse'); }); }).catch(() => {});
+  const sb = $('#introSnd');
+  sb.addEventListener('pointerdown', e => e.stopPropagation());
+  sb.addEventListener('click', e => { e.stopPropagation(); sb.classList.remove('pulse'); const on = !(soundOn() && AUD && AUD.running); store.set('chud:sound', on); html.classList.toggle('muted', !on); if (AUD) on ? AUD.begin() : AUD.mute(); });
+  el.addEventListener('pointerdown', () => {
+    if (AUD && soundOn() && !AUD.running) { AUD.begin(); sb.classList.remove('pulse'); return; }   // first touch wakes the sound
+    ctrl && ctrl.skip();
+  });
+  addEventListener('keydown', e => { if (!done && /Escape|Enter| /.test(e.key)) ctrl && ctrl.skip(); });
   const memes = api.tokens(MEME_MINTS).then(l => MEME_MINTS.map(m => l.find(t => t.mint === m)).filter(Boolean).map(t => ({ symbol: t.symbol, icon: t.icon }))).catch(() => []);
   Promise.all([import('./intro3d.js?v=1'), Promise.race([memes, new Promise(r => setTimeout(() => r([]), 2500))])])
-    .then(([m, list]) => m.run({ canvas: cv, memes: list, face: '/favicon-192.png?v=1', onDone: end }))
+    .then(async ([m, list]) => { ctrl = await m.run({ canvas: cv, memes: list, face: '/favicon-192.png?v=1', onDone: end, audio: { step: k => AUD && AUD.step(k), light: i => AUD && AUD.light(i), sit: () => AUD && AUD.sit(), chair: () => AUD && AUD.chair(), boot: () => AUD && AUD.boot(), key: () => AUD && AUD.key(), ok: () => AUD && AUD.ok(), dive: () => AUD && AUD.dive() } }); })
     .catch(end);
   setTimeout(end, 32000);                                     // never hold the page hostage
 });
@@ -138,6 +151,69 @@ setTimeout(async () => {
   const s = store.get('chud:sol'); if (s) { const w = W.sol.list.find(x => x.name === s); if (w && w.accounts && w.accounts.length) W.connectSol(s).catch(() => {}); }
   const e = store.get('chud:evm'); if (e) { const d = W.evm.list.find(x => x.info.uuid === e); const p = d ? d.provider : W.legacyEvm(); if (p) p.request({ method: 'eth_accounts' }).then(a => { if (a && a[0]) W.connectEvm(d ? e : 'legacy').catch(() => {}); }).catch(() => {}); }
 }, 900);
+
+// ---------------------------------------------------------------- nav tools: live SOL, palette, watchlist, positions, replay, sound
+const goTerm = () => scrollTo(0);
+const tools = {
+  palette: () => openPalette(),
+  watch: () => { goTerm(); setTimeout(() => { const b = $('#listTab button[data-l=watch]'); b && b.click(); }, 300); },
+  pos: () => scrollTo('.desk', { offset: -90 }),
+  replay: () => { location.href = location.pathname; },
+  sound: () => { const on = !soundOn(); store.set('chud:sound', on); html.classList.toggle('muted', !on); toast(on ? 'Sound on. You will hear it on the next intro.' : 'Sound off.', '', 2500); },
+};
+$('#navK').onclick = tools.palette; $('#navWatch').onclick = tools.watch; $('#navPos').onclick = tools.pos; $('#navReplay').onclick = tools.replay; $('#navSound').onclick = tools.sound;
+$('#navSol').onclick = () => { goTerm(); setTimeout(() => window.__chudHedgePerp && window.__chudHedgePerp('SOL'), 300); };
+$('#mSheet').addEventListener('click', e => { const b = e.target.closest('button[data-act]'); if (!b) return; ms.hidden = true; tools[b.dataset.act](); });
+on('perps', P => { const s = P.by.SOL; if (!s) return; const b = $('#navSol'); b.querySelector('b').textContent = px(api.mids.SOL || s.mark); b.classList.toggle('dn', s.chg < 0); });
+on('mids', m => { if (m.SOL) $('#navSol b').textContent = px(m.SOL); });
+// the palette: every action, plus a live coin search
+const ACTIONS = [
+  ['Ape', 'A', 'buy or sell the coin on screen', () => { goTerm(); $('#sideTabs button[data-t=ape]').click(); }],
+  ['Hedge', 'H', 'short its perp or SOL', () => { goTerm(); $('#sideTabs button[data-t=hedge]').click(); }],
+  ['Perps', 'P', 'long or short anything on Hyperliquid', () => { goTerm(); $('#sideTabs button[data-t=perps]').click(); }],
+  ['Hedge the whole bag', '⇣', 'short SOL against everything you hold', () => { goTerm(); setTimeout(() => $('#hedgeAll').click(), 400); }],
+  ['Watchlist', '★', 'coins you starred', tools.watch],
+  ['Your bag and positions', '◧', 'the desk under the terminal', tools.pos],
+  ['Connect wallets', '⇄', 'Solana and Hyperliquid', () => openWallets()],
+  ['Meme perps board', '≡', 'funding, open interest, volume', () => scrollTo('#perps', { offset: -10 })],
+  ['Trending memes', '↗', 'what the trenches are aping', () => scrollTo('#memes', { offset: -10 })],
+  ['How a hedge works', '◑', 'real prices, last 7 days', () => scrollTo('#hedge', { offset: -10 })],
+  ['Hedge math', '∑', 'size it before you click', () => scrollTo('#math', { offset: -10 })],
+  ['Make your chud', '☺', 'render one and save the PNG', () => scrollTo('#maker', { offset: -10 })],
+  ['Replay the intro', '▶', 'walk the gallery again', tools.replay],
+  ['Sound on or off', '♪', 'for the intro', tools.sound],
+  ['FAQ', '?', 'questions chuds ask', () => scrollTo('#faq', { offset: -10 })],
+];
+let palSel = 0, palItems = [], palSeq = 0;
+function openPalette() {
+  const p = $('#pal'), q = $('#palQ'); p.hidden = false; q.value = ''; drawPal([]); setTimeout(() => q.focus(), 20);
+  if (window.__lenis) window.__lenis.stop();
+}
+function closePalette() { $('#pal').hidden = true; if (window.__lenis) window.__lenis.start(); }
+function drawPal(coins) {
+  const v = $('#palQ').value.trim().toLowerCase();
+  const acts = ACTIONS.filter(a => !v || (a[0] + ' ' + a[2]).toLowerCase().includes(v));
+  palItems = [...coins.map(t => ({ coin: t })), ...acts.map(a => ({ act: a }))]; palSel = 0;
+  $('#palList').innerHTML = (coins.length ? '<p class="ph">Coins</p>' + coins.map((t, i) => `<button type="button" data-i="${i}">${icon(t.icon, t.symbol)}<b>${esc(t.symbol)} <span class="muted" style="font-weight:400">${esc(t.name)}</span></b><em>${usd(t.mcap)}</em></button>`).join('') : '')
+    + (acts.length ? '<p class="ph">Actions</p>' + acts.map((a, i) => `<button type="button" data-i="${coins.length + i}"><span class="k">${a[1]}</span><b>${esc(a[0])}</b><em>${esc(a[2])}</em></button>`).join('') : '')
+    || '<p class="ph">Nothing matches. Paste a mint to look it up.</p>';
+  hlPal();
+}
+function hlPal() { $$('#palList button').forEach(b => b.classList.toggle('hl', +b.dataset.i === palSel)); }
+function runPal(i) { const it = palItems[i]; if (!it) return; closePalette(); if (it.coin) { goTerm(); window.__chudPick && window.__chudPick(it.coin.mint, 'ape'); } else it.act[3](); }
+$('#palQ').addEventListener('input', () => {
+  drawPal([]); const v = $('#palQ').value.trim(); if (v.length < 2) return;
+  const my = ++palSeq; setTimeout(async () => { if (my !== palSeq) return; try { const r = (await api.search(v)).slice(0, 6); if (my === palSeq) drawPal(r); } catch {} }, 250);
+});
+$('#palQ').addEventListener('keydown', e => {
+  if (e.key === 'ArrowDown') { e.preventDefault(); palSel = Math.min(palItems.length - 1, palSel + 1); hlPal(); }
+  else if (e.key === 'ArrowUp') { e.preventDefault(); palSel = Math.max(0, palSel - 1); hlPal(); }
+  else if (e.key === 'Enter') { e.preventDefault(); runPal(palSel); }
+  else if (e.key === 'Escape') closePalette();
+});
+$('#palList').addEventListener('click', e => { const b = e.target.closest('button[data-i]'); if (b) runPal(+b.dataset.i); });
+$('#pal').addEventListener('click', e => { if (e.target.id === 'pal') closePalette(); });
+addEventListener('keydown', e => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#pal').hidden ? openPalette() : closePalette(); } });
 
 // ---------------------------------------------------------------- boot
 smooth();
