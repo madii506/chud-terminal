@@ -33,8 +33,16 @@ const introDone = new Promise(res => {
   });
   addEventListener('keydown', e => { if (!done && /Escape|Enter| /.test(e.key)) ctrl && ctrl.skip(); });
   const memes = api.tokens(MEME_MINTS).then(l => MEME_MINTS.map(m => l.find(t => t.mint === m)).filter(Boolean).map(t => ({ symbol: t.symbol, icon: t.icon }))).catch(() => []);
-  Promise.all([import('./intro3d.js?v=1'), Promise.race([memes, new Promise(r => setTimeout(() => r([]), 2500))])])
-    .then(async ([m, list]) => { ctrl = await m.run({ canvas: cv, memes: list, face: '/favicon-192.png?v=1', onDone: end, audio: { step: k => AUD && AUD.step(k), light: i => AUD && AUD.light(i), sit: () => AUD && AUD.sit(), chair: () => AUD && AUD.chair(), boot: () => AUD && AUD.boot(), key: () => AUD && AUD.key(), ok: () => AUD && AUD.ok(), dive: () => AUD && AUD.dive() } }); })
+  // the paintings are fetched, decoded and cut square before the lights come on, so every frame is filled from the first second
+  const art = memes.then(list => Promise.all(list.map(t => new Promise(r => {
+    if (!t.icon) return r(null);
+    const im = new Image(); im.decoding = 'async';
+    im.onload = async () => { try { await im.decode(); } catch {} const c = document.createElement('canvas'); c.width = c.height = 512; const s = Math.min(im.naturalWidth, im.naturalHeight); c.getContext('2d').drawImage(im, (im.naturalWidth - s) / 2, (im.naturalHeight - s) / 2, s, s, 0, 0, 512, 512); r(c); };
+    im.onerror = () => r(null); im.src = '/api/img?u=' + encodeURIComponent(t.icon);
+  })))).catch(() => []);
+  const wait = (p, ms, d) => Promise.race([p, new Promise(r => setTimeout(() => r(d), ms))]);
+  Promise.all([import('./intro3d.js?v=1'), wait(Promise.all([memes, art]), 3800, null)])
+    .then(async ([m, got]) => { const [list, imgs] = got || [await wait(memes, 400, []), []]; ctrl = await m.run({ canvas: cv, memes: list, images: imgs || [], face: '/favicon-192.png?v=1', onDone: end, audio: { step: k => AUD && AUD.step(k), light: i => AUD && AUD.light(i), sit: () => AUD && AUD.sit(), chair: () => AUD && AUD.chair(), boot: () => AUD && AUD.boot(), key: () => AUD && AUD.key(), ok: () => AUD && AUD.ok(), dive: () => AUD && AUD.dive() } }); })
     .catch(end);
   setTimeout(end, 32000);                                     // never hold the page hostage
 });
