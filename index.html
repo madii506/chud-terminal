@@ -53,12 +53,12 @@
             <div class="tok" id="tok"><div class="tok-id"><span class="tok-ic" id="tokIc"></span><div><b id="tokSym">—</b><span id="tokName">loading</span></div><button class="star" id="tokStar" type="button" aria-label="Watch this coin">☆</button><div class="socials" id="tokSoc"></div></div><div class="tok-px"><b id="tokPx">—</b><em id="tokCh">—</em></div></div>
             <div class="tok-stats mono" id="tokStats"></div>
             <div class="pulse mono" id="pulse"></div>
-            <div class="chart-h"><div class="seg seg-xs" id="chartTf"><button data-tf="5m" type="button">5m</button><button data-tf="15m" type="button" class="on">15m</button><button data-tf="1h" type="button">1h</button><button data-tf="4h" type="button">4h</button><button data-tf="1d" type="button">1D</button></div><span class="mono muted" id="chartSrc"></span></div>
+            <div class="chart-h"><div class="chart-tools"><div class="seg seg-xs" id="chartTf"><button data-tf="5m" type="button">5m</button><button data-tf="15m" type="button" class="on">15m</button><button data-tf="1h" type="button">1h</button><button data-tf="4h" type="button">4h</button><button data-tf="1d" type="button">1D</button></div><div class="seg seg-xs" id="chartOv"><button data-o="ema" type="button">EMA 20/50</button><button data-o="sol" type="button">vs SOL</button></div></div><span class="mono muted" id="chartSrc"></span></div>
             <div class="chart" id="chart"><canvas id="chartCv"></canvas><div class="chart-tip mono" id="chartTip" hidden></div><div class="chart-empty mono" id="chartEmpty" hidden></div></div>
-            <div class="under"><div class="under-h"><div class="seg seg-xs" id="underTab"><button data-u="trades" type="button" class="on">Trades</button><button data-u="info" type="button">Info</button><button data-u="perp" type="button">Perp</button></div><span class="mono muted" id="underNote"></span></div><div class="under-b mono" id="underB"><p class="empty">Loading trades…</p></div></div>
+            <div class="under"><div class="under-h"><div class="seg seg-xs" id="underTab"><button data-u="trades" type="button" class="on">Trades</button><button data-u="info" type="button">Info</button><button data-u="perp" type="button">Perp</button></div><div class="seg seg-xs" id="trF"><button data-f="all" type="button" class="on">All</button><button data-f="buy" type="button">Buys</button><button data-f="sell" type="button">Sells</button><button data-f="whale" type="button">Whales</button></div><span class="mono muted" id="underNote"></span></div><div class="under-b mono" id="underB"><p class="empty">Loading trades…</p></div></div>
           </div>
           <div class="t-side">
-            <div class="seg tabs" id="sideTabs"><button data-t="ape" type="button" class="on">Ape</button><button data-t="hedge" type="button">Hedge</button><button data-t="perps" type="button">Perps</button></div>
+            <div class="seg tabs" id="sideTabs"><button data-t="ape" type="button" class="on"><img src="https://www.google.com/s2/favicons?domain=jup.ag&amp;sz=64" alt="">Ape</button><button data-t="hedge" type="button"><img src="https://www.google.com/s2/favicons?domain=hyperliquid.xyz&amp;sz=64" alt="">Hedge</button><button data-t="perps" type="button"><img src="https://www.google.com/s2/favicons?domain=hyperliquid.xyz&amp;sz=64" alt="">Perps</button></div>
             <!-- ape -->
             <div class="pane" id="paneApe">
               <div class="seg seg-sm" id="apeSide"><button data-s="buy" type="button" class="on">Buy</button><button data-s="sell" type="button">Sell</button></div>
@@ -84,6 +84,8 @@
             <div class="pane" id="panePerps" hidden>
               <label class="fld"><span>Perp</span><select id="pxPerp"></select></label>
               <div class="seg seg-sm" id="pxSide"><button data-s="long" type="button" class="on">Long</button><button data-s="short" type="button">Short</button></div>
+              <div class="seg seg-sm" id="pxType"><button data-t="market" type="button" class="on">Market</button><button data-t="limit" type="button">Limit</button></div>
+              <label class="fld" id="pxPxWrap" hidden><span>Limit price (USD)</span><input id="pxPx" type="text" inputmode="decimal"></label>
               <label class="fld"><span>Size (USD)</span><input id="pxSize" type="text" inputmode="decimal" value="100"></label>
               <div class="seg seg-sm" id="pxLev"></div>
               <div class="quote mono" id="pxOut"></div>
@@ -94,7 +96,7 @@
         </div>
         <div class="desk">
           <div class="desk-c"><div class="desk-h mono"><span>Your bag</span><em id="bagTot">—</em></div><div class="desk-rows" id="bagRows"><p class="empty mono">Connect a Solana wallet to see your bag.</p></div></div>
-          <div class="desk-c"><div class="desk-h mono"><span>Your positions</span><em id="hlTot">—</em></div><div class="desk-rows" id="hlRows"><p class="empty mono">Connect for Hyperliquid to see your positions.</p></div><div class="desk-h mono" style="margin-top:12px"><span>Recent fills</span></div><div class="desk-rows" id="fillRows"><p class="empty mono">—</p></div></div>
+          <div class="desk-c"><div class="desk-h mono"><span>Your positions</span><em id="hlTot">—</em></div><div class="desk-rows" id="hlRows"><p class="empty mono">Connect for Hyperliquid to see your positions.</p></div><div class="desk-h mono" style="margin-top:12px"><span>Open orders</span><em id="ooN"></em></div><div class="desk-rows" id="ooRows"><p class="empty mono">—</p></div><div class="desk-h mono" style="margin-top:12px"><span>Recent fills</span></div><div class="desk-rows" id="fillRows"><p class="empty mono">—</p></div></div>
           <div class="desk-c desk-net"><div class="desk-h mono"><span>Net</span><em id="netV">—</em></div><div class="net-bar"><i id="netBag"></i><i id="netShort"></i></div><div class="net-l mono"><span><i class="sw g"></i>bag <b id="netBagV">—</b></span><span><i class="sw r"></i>short <b id="netShortV">—</b></span></div><p class="mono muted" id="netNote">Hedged share of your bag.</p><button class="btn btn-r btn-sm" id="hedgeAll" type="button" style="margin-top:12px">Hedge the whole bag with SOL</button></div>
         </div>
       </div>
@@ -105,21 +107,23 @@
   <div class="tape" id="tape" aria-label="Live meme perps on Hyperliquid"><div class="tape-in" id="tapeIn"></div></div>
 
   <!-- hero -->
-  <section class="hero band" id="hero">
-    <div class="hero-l">
-      <p class="kick mono"><i class="live"></i>onchain terminal · solana + hyperliquid</p>
-      <h1 class="h1"><span class="ln">Ape memes.</span><span class="ln">Hedge with perps.</span></h1>
-      <p class="lede">Buy any Solana memecoin and short it, or the market, on Hyperliquid. One screen, your own wallets, no custody.</p>
-      <div class="cta"><a class="btn btn-g btn-lg" href="#terminal">Open the terminal</a><a class="btn btn-line btn-lg" href="#hedge">How a hedge works</a></div>
-      <div class="hero-stats mono" id="heroStats">
-        <div><span>SOL</span><b id="hsSol">—</b><em id="hsSolC">—</em></div>
-        <div><span>meme perps live</span><b id="hsPerps">—</b><em>on Hyperliquid</em></div>
-        <div><span>top funding</span><b id="hsFund">—</b><em id="hsFundC">—</em></div>
+  <section class="band market" id="hero">
+    <div class="wrap market-in">
+      <div class="mk-l">
+        <header class="sec-h"><p class="eyebrow mono">01 — Market</p><h2 class="h2 split">The meme market, live.</h2></header>
+        <div class="mstats mono" id="mstats">
+          <div><span>Meme perps</span><b id="msN">—</b><em id="msUD">—</em></div>
+          <div><span>Open interest</span><b id="msOI">—</b><em>on Hyperliquid</em></div>
+          <div><span>Volume 24h</span><b id="msVol">—</b><em id="msTop">—</em></div>
+          <div><span>Avg funding</span><b id="msFund">—</b><em>APR, OI-weighted</em></div>
+        </div>
+        <div class="heat-h mono"><div class="seg seg-xs" id="heatBy"><button data-b="oi" type="button" class="on">By open interest</button><button data-b="vol" type="button">By volume</button></div><span class="muted">tap a tile to trade it</span></div>
+        <div class="heat" id="heat"></div>
       </div>
-    </div>
-    <div class="hero-r">
-      <div class="chud-stage" id="stage"><canvas id="chudCv" width="1000" height="1000" aria-label="CHUD, a clay trader in a beanie whose glasses show the market"></canvas></div>
-      <p class="lens-note mono" id="lensNote"><i></i><span>his lenses show SOL, last hour</span><b id="lensVal">—</b></p>
+      <div class="mk-r">
+        <div class="chud-stage" id="stage"><canvas id="chudCv" width="1000" height="1000" aria-label="CHUD, a clay trader in a beanie whose glasses show the market"></canvas></div>
+        <p class="lens-note mono" id="lensNote"><i></i><span>his lenses: SOL, last hour</span><b id="lensVal">—</b></p>
+      </div>
     </div>
   </section>
 

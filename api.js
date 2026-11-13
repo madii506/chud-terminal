@@ -83,6 +83,7 @@ const tokMap = t => t && ({
 export const trending = (tf = '1h', limit = 40) => j(`${JUP}/tokens/v2/toptrending/${tf}?limit=${limit}`).then(a => a.map(tokMap));
 export const recent = (limit = 40) => j(`${JUP}/tokens/v2/recent?limit=${limit}`).then(a => a.map(tokMap));
 export const topOrganic = (tf = '1h', limit = 40) => j(`${JUP}/tokens/v2/toporganicscore/${tf}?limit=${limit}`).then(a => a.map(tokMap));
+export const openOrders = user => info({ type: 'frontendOpenOrders', user });
 export const book = coin => info({ type: 'l2Book', coin });
 export const fills = user => info({ type: 'userFills', user });
 export const poolTrades = pool => j(`${GT}/networks/solana/pools/${pool}/trades`).then(d => (d.data || []).map(x => x.attributes));

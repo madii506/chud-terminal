@@ -531,3 +531,35 @@ a.wbtn{color:inherit}
 .tok-id .lp{display:inline-flex;max-width:none;overflow:visible}
 .tok-id .lp img{display:block}
 .via{white-space:nowrap}
+
+/* v5: market band, treemap, tools */
+.market-in{display:grid;grid-template-columns:1.25fr .75fr;gap:40px;align-items:center}
+.mstats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:-8px 0 16px}
+.mstats>div{border:1px solid var(--line);border-radius:14px;padding:14px;background:var(--p1);display:grid;gap:3px}
+.mstats span{font-size:11px;color:var(--mute);text-transform:uppercase;letter-spacing:.05em}
+.mstats b{font-size:22px;font-weight:600;font-family:var(--mono)}
+.mstats em{font-style:normal;font-size:11.5px;color:var(--mute)}
+.heat-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:11.5px}
+.heat{position:relative;height:440px;border-radius:16px;overflow:hidden;background:#050505;border:1px solid var(--line)}
+.tl{position:absolute;border:0;border-radius:8px;color:#f2f1ec;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;text-align:center;overflow:hidden;transition:filter .2s,transform .2s;padding:4px;font-family:var(--mono)}
+.tl:hover{filter:brightness(1.25);z-index:2}
+.tl b{font-weight:600;font-size:12px;line-height:1.1}
+.tl.big b{font-size:16px}.tl.sm b{font-size:9.5px}
+.tl em{font-style:normal;font-size:11.5px;opacity:.95}
+.tl.big em{font-size:14px}
+.tl .tp{font-size:11px;opacity:.75}
+.tl .hi{width:22px;height:22px;border-radius:50%;object-fit:cover;background:rgba(0,0,0,.25)}
+.tl.big .hi{width:34px;height:34px}
+.mk-r{display:grid;justify-items:center}
+.wpill img{width:16px;height:16px;border-radius:4px}
+.wpill i{display:none}
+.wpill.on{border-color:rgba(58,222,124,.45)}
+.tabs button img{width:14px;height:14px;border-radius:3px;margin-right:6px;vertical-align:-2px;opacity:.85}
+.chart-tools{display:flex;gap:6px;flex-wrap:wrap}
+#chartOv button.on{color:var(--y)}
+#trF{margin-left:auto;margin-right:10px}
+.trd.whale{background:rgba(255,210,63,.07)}
+.trd.whale span:nth-child(3){color:var(--y);font-weight:600}
+#pxType{width:100%}#pxType button{flex:1}
+@media (max-width:1180px){.market-in{grid-template-columns:1fr}.mk-r{order:-1}.mk-r .chud-stage{width:min(380px,80vw)}}
+@media (max-width:760px){.mstats{grid-template-columns:1fr 1fr}.heat{height:360px}#trF{display:none}}

@@ -67,7 +67,7 @@ export async function connectEvm(uuid) {
   if (!p) throw new Error('No EVM wallet found. Phantom, MetaMask or Rabby all work.');
   const accs = await p.request({ method: 'eth_requestAccounts' });
   if (!accs || !accs[0]) throw new Error('The wallet returned no account.');
-  evm.p = p; evm.name = d ? d.info.name : 'Wallet'; evm.address = accs[0].toLowerCase();
+  evm.p = p; evm.name = d ? d.info.name : 'Wallet'; evm.icon = d ? d.info.icon : null; evm.address = accs[0].toLowerCase();
   evm.chainId = await p.request({ method: 'eth_chainId' });
   store.set('chud:evm', d ? d.info.uuid : 'legacy');
   try { p.on && p.on('accountsChanged', a => { evm.address = a && a[0] ? a[0].toLowerCase() : null; emit('evm'); }); p.on && p.on('chainChanged', c => { evm.chainId = c; }); } catch {}
@@ -129,4 +129,20 @@ export async function moveToPerps(amount) {
   const { action, typed } = H.usdClassTransfer(String(amount), true, n, cid);
   const sig = await signTyped(typed);
   return post(action, H.splitSig(sig), n);
+}
+
+// a resting limit order (good till cancelled) and a cancel, both signed by the session key
+export async function limitOrder(p, isBuy, size, price, { reduceOnly = false, lev = null } = {}) {
+  if (lev) await l1(H.leverageAction(p.asset, Math.min(lev, p.maxLev), !p.onlyIso));
+  const sz = H.szRound(size, p.szDec); if (!(sz > 0)) throw new Error('That size rounds to zero on this perp.');
+  const res = await l1(H.orderAction(p.asset, isBuy, H.pxRound(price, p.szDec), sz, reduceOnly, 'Gtc'));
+  const st = res && res.data && res.data.statuses && res.data.statuses[0];
+  if (st && st.error) throw new Error(st.error);
+  return st && (st.resting || st.filled) || st;
+}
+export async function cancelOrder(p, oid) {
+  const res = await l1({ type: 'cancel', cancels: [{ a: p.asset, o: oid }] });
+  const st = res && res.data && res.data.statuses && res.data.statuses[0];
+  if (st && st.error) throw new Error(st.error);
+  return st;
 }

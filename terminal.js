@@ -29,9 +29,10 @@ export function init() {
 
 // ---------------------------------------------------------------- wallet pills above the terminal
 function pills() {
+  const si = W.sol.address && W.sol.w && W.sol.w.icon ? W.sol.w.icon : brand('solana.com'), ei = W.evm.address && W.evm.icon ? W.evm.icon : brand('hyperliquid.xyz');
   $('#termWallets').innerHTML =
-    `<button class="wpill ${W.sol.address ? 'on' : ''}" data-w="sol" type="button"><i></i>${W.sol.address ? 'SOL ' + short(W.sol.address) : 'Solana wallet'}</button>` +
-    `<button class="wpill ${W.evm.address ? 'on' : ''}" data-w="evm" type="button"><i></i>${W.evm.address ? 'HL ' + short(W.evm.address) : 'Hyperliquid'}</button>`;
+    `<button class="wpill ${W.sol.address ? 'on' : ''}" data-w="sol" type="button"><img src="${esc(si)}" alt=""><i></i>${W.sol.address ? short(W.sol.address) : 'Solana wallet'}</button>` +
+    `<button class="wpill ${W.evm.address ? 'on' : ''}" data-w="evm" type="button"><img src="${esc(ei)}" alt=""><i></i>${W.evm.address ? short(W.evm.address) : 'Hyperliquid'}</button>`;
   $('#termWallets').onclick = e => { if (e.target.closest('.wpill')) window.__wallets(); };
 }
 
@@ -111,6 +112,8 @@ function head() {
 // ---------------------------------------------------------------- chart (GeckoTerminal candles, drawn on a canvas)
 function bindChart() {
   $('#chartTf').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#chartTf button').forEach(x => x.classList.toggle('on', x === b)); S.tf = b.dataset.tf; loadChart(); };
+  S.ov = store.get('chud:ov', { ema: true, sol: false }); $$('#chartOv button').forEach(b => b.classList.toggle('on', !!S.ov[b.dataset.o]));
+  $('#chartOv').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.ov[b.dataset.o] = !S.ov[b.dataset.o]; b.classList.toggle('on', S.ov[b.dataset.o]); store.set('chud:ov', S.ov); if (b.dataset.o === 'sol' && S.ov.sol) solLine().then(drawChart); else drawChart(); };
   const cv = $('#chartCv');
   cv.addEventListener('pointermove', e => { const r = cv.getBoundingClientRect(); S.hover = (e.clientX - r.left) / r.width; drawChart(); });
   cv.addEventListener('pointerleave', () => { S.hover = null; drawChart(); });
@@ -127,7 +130,7 @@ async function loadChart() {
     if (S.chartKey !== my) return;
     const vd = venue(pool.dex); S.candles = c; $('#chartSrc').innerHTML = `${vd ? `<img src="${brand(vd)}" alt="">` : ''}${esc((pool.dex || '').replace(/[_-]/g, ' '))} · ${short(pool.address)}`;
     if (!c.length) throw new Error('empty');
-    drawChart();
+    drawChart(); if (S.ov && S.ov.sol) solLine().then(drawChart);
   } catch (e) {
     if (S.chartKey !== my) return;
     S.candles = []; drawChart(); const el = $('#chartEmpty'); el.hidden = false; el.textContent = 'No candles for this coin yet.';
@@ -151,6 +154,16 @@ function drawChart() {
     g.strokeStyle = col; g.beginPath(); g.moveTo(Math.round(x) + .5, y(k.h)); g.lineTo(Math.round(x) + .5, y(k.l)); g.stroke();
     g.fillStyle = col; const b0 = y(Math.max(k.o, k.c)), b1 = y(Math.min(k.o, k.c)); g.fillRect(x - Math.max(1, cw * .34), b0, Math.max(1.5, cw * .68), Math.max(1, b1 - b0));
   });
+  if (S.ov && S.ov.ema) {                                                     // EMA 20 / 50 on closes
+    const ema = k => { const a = 2 / (k + 1); let e = c[0].c; return c.map(x => (e = x.c * a + e * (1 - a))); };
+    [[ema(20), 'rgba(255,210,63,.85)'], [ema(50), 'rgba(120,160,255,.85)']].forEach(([arr, col]) => { g.strokeStyle = col; g.lineWidth = 1.4; g.beginPath(); arr.forEach((v, i) => { const xx = 6 + i * cw + cw / 2; i ? g.lineTo(xx, y(v)) : g.moveTo(xx, y(v)); }); g.stroke(); });
+    g.lineWidth = 1;
+  }
+  if (S.ov && S.ov.sol && S.solC && S.solC.key === S.tf) {                     // SOL, rebased to the coin's first close
+    const sc = S.solC.c, base = sc.find(k => k.t >= c[0].t) || sc[0];
+    if (base) { g.strokeStyle = 'rgba(190,140,255,.9)'; g.setLineDash([4, 3]); g.lineWidth = 1.4; g.beginPath(); let started = false;
+      c.forEach((k, i) => { const s = nearest(sc, k.t); if (!s) return; const v = c[0].c * (s.c / base.c); const xx = 6 + i * cw + cw / 2, yy = Math.max(padT, Math.min(h - padB, y(v))); started ? g.lineTo(xx, yy) : (g.moveTo(xx, yy), started = true); }); g.stroke(); g.setLineDash([]); g.lineWidth = 1; }
+  }
   const last = c[n - 1], ly = y(last.c);
   g.setLineDash([3, 4]); g.strokeStyle = 'rgba(242,241,236,.35)'; g.beginPath(); g.moveTo(0, ly); g.lineTo(w - padR + 4, ly); g.stroke(); g.setLineDash([]);
   g.fillStyle = last.c >= last.o ? '#3ade7c' : '#ff4d5a'; g.fillRect(w - padR + 4, ly - 9, padR - 6, 18); g.fillStyle = '#000'; g.fillText(px(last.c).replace('$', ''), w - padR + 8, ly + 4);
@@ -314,7 +327,7 @@ async function loadHL() {
     const pos = (a.assetPositions || []).map(x => x.position).map(p => ({ coin: p.coin, szi: +p.szi, entry: +p.entryPx, upnl: +p.unrealizedPnl, liq: p.liquidationPx ? +p.liquidationPx : null, val: +p.positionValue, lev: p.leverage && p.leverage.value }));
     const spotUsdc = sp && sp.balances ? +((sp.balances.find(b => b.coin === 'USDC') || {}).total || 0) : 0;
     S.hl = { equity: +a.marginSummary.accountValue, free: +a.withdrawable, pos, spotUsdc };
-    drawHL(); net(); hedgeBtn(); pxCalc();
+    drawHL(); net(); hedgeBtn(); pxCalc(); loadOO();
     api.fills(W.evm.address).then(f => { $('#fillRows').innerHTML = (f || []).slice(0, 8).map(x => `<div class="drow hl"><b class="${x.side === 'B' ? 'up' : 'dn'}">${coinIcon(x.coin, 'ci')}${x.side === 'B' ? 'BUY' : 'SELL'} ${esc(x.coin)}</b><span>${num(+x.sz, 3)} @ ${px(+x.px)}</span><span class="${cls(+x.closedPnl)}">${+x.closedPnl ? usd(+x.closedPnl) : ''}</span><span>${new Date(x.time).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })}</span></div>`).join('') || '<p class="empty mono">No fills yet.</p>'; }).catch(() => {});
   } catch { $('#hlRows').innerHTML = '<p class="empty mono">Could not read Hyperliquid right now.</p>'; }
 }
@@ -365,7 +378,8 @@ function perpRow(name) {
   S.px = name; fillPx(); setTab('perps'); pxCalc();
 }
 // under the chart
-function bindUnder() { $('#underTab').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#underTab button').forEach(x => x.classList.toggle('on', x === b)); S.under = b.dataset.u; under(); }; S.under = 'trades'; }
+function bindUnder() { $('#underTab').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#underTab button').forEach(x => x.classList.toggle('on', x === b)); S.under = b.dataset.u; $('#trF').style.display = S.under === 'trades' ? '' : 'none'; under(); }; S.under = 'trades'; S.trF = 'all';
+  $('#trF').onclick = e => { const b = e.target.closest('button'); if (!b) return; $$('#trF button').forEach(x => x.classList.toggle('on', x === b)); S.trF = b.dataset.f; under(); }; }
 async function under() {
   const box = $('#underB'), t = S.tok, u = S.under || 'trades'; if (!t) return;
   if (u === 'info') {
@@ -385,11 +399,12 @@ async function under() {
   }
   try {
     const pool = await api.topPool(t.mint); if (!pool) throw 0;
-    const tr = (await api.poolTrades(pool.address)).slice(0, 40);
+    const all = await api.poolTrades(pool.address), f = S.trF || 'all';
+    const tr = all.filter(x => f === 'all' || (f === 'buy' ? x.kind === 'buy' : f === 'sell' ? x.kind === 'sell' : +x.volume_in_usd >= 1000)).slice(0, 60);
     if (S.tok !== t) return;
-    $('#underNote').textContent = 'live · last ' + tr.length;
+    $('#underNote').textContent = (f === 'whale' ? 'trades over $1K · ' : '') + 'live · ' + tr.length;
     box.innerHTML = tr.length ? tr.map(x => { const buy = x.kind === 'buy', d = new Date(x.block_timestamp), amt = buy ? +x.to_token_amount : +x.from_token_amount;
-      return `<div class="trd"><span class="${buy ? 'b' : 's'}">${buy ? 'BUY' : 'SELL'}</span><span>${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).slice(0, 8)}</span><span>${usd(+x.volume_in_usd)}</span><span>${num(amt)} ${esc(t.symbol)}</span><a href="https://solscan.io/tx/${esc(x.tx_hash)}" target="_blank" rel="noopener">${short(x.tx_from_address || x.tx_hash)}</a></div>`; }).join('') : '<p class="empty">No trades yet.</p>';
+      return `<div class="trd ${+x.volume_in_usd >= 1000 ? 'whale' : ''}"><span class="${buy ? 'b' : 's'}">${buy ? 'BUY' : 'SELL'}</span><span>${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false }).slice(0, 8)}</span><span>${usd(+x.volume_in_usd)}</span><span>${num(amt)} ${esc(t.symbol)}</span><a href="https://solscan.io/tx/${esc(x.tx_hash)}" target="_blank" rel="noopener">${short(x.tx_from_address || x.tx_hash)}</a></div>`; }).join('') : '<p class="empty">No trades yet.</p>';
   } catch { if (S.tok === t) { box.innerHTML = '<p class="empty">No live trades for this coin right now.</p>'; $('#underNote').textContent = ''; } }
 }
 // straight perps: long or short anything on Hyperliquid
@@ -400,6 +415,9 @@ function bindPerps() {
   $('#pxSide').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.pxSide = b.dataset.s; $$('#pxSide button').forEach(x => x.classList.toggle('on', x === b)); pxCalc(); };
   $('#pxLev').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.pxLev = +b.dataset.l; pxCalc(); };
   $('#pxGo').onclick = pxGo;
+  S.pxType = 'market';
+  $('#pxType').onclick = e => { const b = e.target.closest('button'); if (!b) return; S.pxType = b.dataset.t; $$('#pxType button').forEach(x => x.classList.toggle('on', x === b)); $('#pxPxWrap').hidden = S.pxType !== 'limit'; if (S.pxType === 'limit' && !parseNum($('#pxPx').value)) { const p = api.perps.by[S.px || 'SOL']; if (p) $('#pxPx').value = +(api.mids[p.name] || p.mark).toPrecision(5); } pxCalc(); };
+  $('#pxPx').addEventListener('input', pxCalc);
 }
 function fillPx() {
   const sel = $('#pxPerp'), L = api.perps.list; if (!L.length) return;
@@ -412,11 +430,11 @@ function pxCalc() {
   const p = api.perps.by[S.px || 'SOL']; if (!p) return;
   const levs = [1, 2, 3, 5, 10, 20].filter(x => x <= p.maxLev); if (!levs.includes(S.pxLev)) S.pxLev = levs.filter(x => x <= S.pxLev).pop() || 1;
   $('#pxLev').innerHTML = levs.map(x => `<button data-l="${x}" type="button" class="${x === S.pxLev ? 'on' : ''}">${x}x</button>`).join('');
-  const size = parseNum($('#pxSize').value) || 0, mark = api.mids[p.name] || p.mark, long = S.pxSide === 'long', mm = 1 / (2 * p.maxLev), mv = (1 / S.pxLev - mm) * 100;
+  const size = parseNum($('#pxSize').value) || 0, lim = S.pxType === 'limit' ? parseNum($('#pxPx').value) : NaN, mark = lim > 0 ? lim : (api.mids[p.name] || p.mark), long = S.pxSide === 'long', mm = 1 / (2 * p.maxLev), mv = (1 / S.pxLev - mm) * 100;
   const fDay = size * p.fund * 24 * (long ? -1 : 1);
   $('#pxOut').innerHTML = [['Mark', px(mark)], ['Size', size ? `${num(size / mark, 3)} ${esc(p.name)}` : '—'], ['Margin', size ? usd(size / S.pxLev) : '—'], ['Liquidates on a move of', size ? `≈ ${long ? '-' : '+'}${mv.toFixed(0)}%` : '—'], ['Funding now', `<span class="${fDay >= 0 ? 'up' : 'dn'}">${fDay >= 0 ? 'earn' : 'pay'} ${usd(Math.abs(fDay))}/day</span>`]].map(([a, b]) => `<div><span>${a}</span><b>${b}</b></div>`).join('');
   const b = $('#pxGo'); b.className = 'btn btn-block ' + (long ? 'btn-g' : 'btn-r');
-  b.textContent = !W.evm.address ? 'Connect for Hyperliquid' : !W.agent() ? 'Approve session key (once)' : `${long ? 'Long' : 'Short'} ${p.name} ${S.pxLev}x`;
+  b.textContent = !W.evm.address ? 'Connect for Hyperliquid' : !W.agent() ? 'Approve session key (once)' : `${S.pxType === 'limit' ? 'Place limit ' : ''}${long ? 'Long' : 'Short'} ${p.name} ${S.pxLev}x`;
 }
 async function pxGo() {
   if (!W.evm.address) return window.__wallets();
@@ -426,8 +444,10 @@ async function pxGo() {
     else {
       const p = api.perps.by[S.px]; const size = parseNum($('#pxSize').value) || 0; if (size < 10) throw new Error('Hyperliquid needs at least $10 per order.');
       b.textContent = 'Sending…';
-      const r = await W.marketOrder(p, S.pxSide === 'long', size / (api.mids[p.name] || p.mark), { lev: S.pxLev });
-      toast(r && r.totalSz ? `${S.pxSide === 'long' ? 'Long' : 'Short'} ${esc(p.name)} filled: ${r.totalSz} @ ${px(+r.avgPx)}` : 'Order sent.', 'ok', 9000);
+      const lim = S.pxType === 'limit' ? parseNum($('#pxPx').value) : NaN;
+      if (S.pxType === 'limit' && !(lim > 0)) throw new Error('Set a limit price.');
+      const r = lim > 0 ? await W.limitOrder(p, S.pxSide === 'long', size / lim, lim, { lev: S.pxLev }) : await W.marketOrder(p, S.pxSide === 'long', size / (api.mids[p.name] || p.mark), { lev: S.pxLev });
+      toast(r && r.totalSz ? `${S.pxSide === 'long' ? 'Long' : 'Short'} ${esc(p.name)} filled: ${r.totalSz} @ ${px(+r.avgPx)}` : r && r.oid ? `Limit ${S.pxSide} ${esc(p.name)} resting @ ${px(lim)}` : 'Order sent.', 'ok', 9000);
       setTimeout(loadHL, 1200);
     }
   } catch (e) { toast(esc(e.message || String(e)), 'err', 9000); }
@@ -517,4 +537,23 @@ function pulse(t) {
     s = s || {}; const vol = (s.buyVolume || 0) + (s.sellVolume || 0), bs = vol ? (s.buyVolume || 0) / vol * 100 : 50;
     return `<div><div class="pr"><span>${k}</span><b class="${cls(s.priceChange)}">${pct(s.priceChange, 1)}</b></div><div class="pv"><span>${usd(vol)}</span><span>${Math.round(s.numTraders || 0).toLocaleString('en-US')} traders</span></div><div class="pb"><i style="width:${bs.toFixed(0)}%"></i></div><div class="pv"><span class="up">${bs.toFixed(0)}% buys</span><span class="${cls(s.numNetBuyers)}">${s.numNetBuyers > 0 ? '+' : ''}${Math.round(s.numNetBuyers || 0).toLocaleString('en-US')} net</span></div></div>`;
   }).join('');
+}
+
+// SOL candles for the overlay, same timeframe as the chart
+const HLTF = { '5m': ['5m', 864e5], '15m': ['15m', 3 * 864e5], '1h': ['1h', 9 * 864e5], '4h': ['4h', 34 * 864e5], '1d': ['1d', 180 * 864e5] };
+async function solLine() { const [iv, ms] = HLTF[S.tf]; if (S.solC && S.solC.key === S.tf && Date.now() - S.solC.at < 60000) return; try { S.solC = { key: S.tf, at: Date.now(), c: await api.candles('SOL', iv, ms) }; } catch {} }
+function nearest(arr, t) { let lo = 0, hi = arr.length - 1; if (hi < 0) return null; while (lo < hi) { const m = (lo + hi) >> 1; if (arr[m].t < t) lo = m + 1; else hi = m; } const a = arr[lo], b = arr[lo - 1]; return b && Math.abs(b.t - t) < Math.abs(a.t - t) ? b : a; }
+// open orders, each with a cancel
+async function loadOO() {
+  if (!W.evm.address) return;
+  try {
+    const oo = await api.openOrders(W.evm.address);
+    $('#ooN').textContent = oo.length ? oo.length + ' open' : '';
+    $('#ooRows').innerHTML = oo.length ? oo.slice(0, 12).map(o => `<div class="drow hl"><b>${coinIcon(o.coin, 'ci')}<span class="${o.side === 'B' ? 'up' : 'dn'}">${o.side === 'B' ? 'BUY' : 'SELL'}</span> ${esc(o.coin)}</b><span>${num(+o.sz, 3)} @ ${px(+o.limitPx)}</span><span>${esc(o.orderType || 'Limit')}</span><button data-oid="${o.oid}" data-c="${esc(o.coin)}" type="button">Cancel</button></div>`).join('') : '<p class="empty mono">No open orders.</p>';
+    $('#ooRows').onclick = async e => {
+      const b = e.target.closest('button[data-oid]'); if (!b) return; const p = api.perps.by[b.dataset.c]; if (!p) return;
+      b.disabled = true; b.textContent = '…';
+      try { await W.cancelOrder(p, +b.dataset.oid); toast(`Cancelled ${esc(p.name)} order.`, 'ok', 4000); setTimeout(loadOO, 800); } catch (err) { toast(esc(err.message), 'err'); b.disabled = false; b.textContent = 'Cancel'; }
+    };
+  } catch {}
 }

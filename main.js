@@ -78,12 +78,7 @@ async function heroLive() {
     }
   } catch { $('#lensVal').textContent = 'offline'; }
 }
-on('perps', P => {
-  const s = P.by.SOL; if (s) { $('#hsSol').textContent = px(s.mark); const e = $('#hsSolC'); e.textContent = pct(s.chg) + ' 24h'; e.className = s.chg >= 0 ? 'up' : 'dn'; }
-  const m = P.list.filter(p => p.meme); $('#hsPerps').textContent = m.length || '—';
-  const top = m.slice().sort((a, b) => Math.abs(b.apr) - Math.abs(a.apr))[0];
-  if (top) { $('#hsFund').textContent = top.name; const e = $('#hsFundC'); e.textContent = (top.apr >= 0 ? '+' : '') + top.apr.toFixed(0) + '% APR'; e.className = top.apr >= 0 ? 'up' : 'dn'; }
-});
+import('./market.js?v=1').then(x => x.init()).catch(e => console.error(e));
 
 // ---------------------------------------------------------------- nav, phone sheet, X, CA
 addEventListener('scroll', () => $('#nav').classList.toggle('solid', scrollY > 30), { passive: true });
@@ -231,12 +226,10 @@ introDone.then(() => {
   if (!reduced()) {
     gsap.from('#term', { y: 30, opacity: 0, scale: .985, duration: 1.1, ease: 'expo.out' });
     gsap.from('#tickers', { y: -12, opacity: 0, duration: .8, ease: 'power3.out', delay: .1 });
-    const lines = $$('.hero .h1 .ln');
-    lines.forEach(l => { l.innerHTML = `<span>${l.innerHTML}</span>`; });
-    const tl = gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top 70%', once: true } });
-    tl.from('.chud-stage', { scale: 1.15, opacity: 0, duration: 1.5, ease: 'expo.out' })
-      .from(lines.map(l => l.firstChild), { yPercent: 110, duration: 1.1, ease: 'expo.out', stagger: .09 }, .1)
-      .from(['.kick', '.lede', '.hero .cta', '.hero-stats', '.lens-note'], { y: 26, opacity: 0, duration: .9, ease: 'power3.out', stagger: .07 }, .3);
+    const tl = gsap.timeline({ scrollTrigger: { trigger: '#hero', start: 'top 72%', once: true } });
+    tl.from('.chud-stage', { scale: 1.12, opacity: 0, duration: 1.5, ease: 'expo.out' })
+      .from('#mstats > div', { y: 24, opacity: 0, duration: .8, ease: 'power3.out', stagger: .07 }, .15)
+      .from('.lens-note', { y: 16, opacity: 0, duration: .8, ease: 'power3.out' }, .4);
   }
   revealAll();
   setTimeout(() => ScrollTrigger.refresh(), 800);
