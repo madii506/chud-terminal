@@ -77,7 +77,7 @@ module.exports = async (req, res) => {
   if (!got && mint) got = await gecko(mint, Math.max(1500, 9000 - (Date.now() - t0)));
   if (!got) {
     res.statusCode = 404;
-    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=1800');
+    res.setHeader('Cache-Control', 'public, max-age=120, s-maxage=600');
     return res.end();
   }
   res.setHeader('Content-Type', got.ct);
@@ -89,19 +89,23 @@ module.exports = async (req, res) => {
   return res.end(got.buf);
 };
 
-// the logo by mint: Trust Wallet's asset repo first, then the image GeckoTerminal keeps for the token
+// the logo by mint: Trust Wallet's asset repo, then pump.fun's own record (brand-new coins), then GeckoTerminal
+async function json(href, ms) {
+  const c = new AbortController(), t = setTimeout(() => c.abort(), ms);
+  try { const r = await fetch(href, { signal: c.signal, headers: { accept: 'application/json', 'user-agent': UA['user-agent'] } }); return r.ok ? await r.json() : null; } catch { return null; } finally { clearTimeout(t); }
+}
 async function gecko(mint, ms) {
+  const end = Date.now() + ms, left = () => Math.max(700, end - Date.now());
   const tw = `https://raw.githubusercontent.com/trustwallet/assets/master/blockchains/solana/assets/${mint}/logo.png`;
-  const end = Date.now() + ms;
-  const a = await first([tw], Math.min(2500, ms)); if (a) return a;
-  try {
-    const c = new AbortController(), t = setTimeout(() => c.abort(), Math.max(800, Math.min(2500, end - Date.now())));
-    const r = await fetch(`https://api.geckoterminal.com/api/v2/networks/solana/tokens/${mint}`, { signal: c.signal, headers: { accept: 'application/json' } });
-    clearTimeout(t);
-    if (!r.ok) return null;
-    const j = await r.json(), img = j && j.data && j.data.attributes && j.data.attributes.image_url;
-    if (!img || /missing/i.test(img) || !/^https:\/\//.test(img)) return null;
-    return await first([img], Math.max(800, end - Date.now()));
-  } catch { return null; }
+  const a = await first([tw], Math.min(2000, left())); if (a) return a;
+  const look = [];
+  if (/pump$/.test(mint)) look.push(json(`https://frontend-api-v3.pump.fun/coins/${mint}`, Math.min(2500, left())).then(j => j && j.image_uri));
+  look.push(json(`https://api.geckoterminal.com/api/v2/networks/solana/tokens/${mint}`, Math.min(2500, left())).then(j => j && j.data && j.data.attributes && j.data.attributes.image_url));
+  for (const img of await Promise.all(look)) {
+    if (!img || /missing/i.test(img) || !/^https:\/\//.test(img)) continue;
+    let u; try { u = new URL(img); } catch { continue; }
+    const got = await first(mirrors(u), left()); if (got) return got;
+  }
+  return null;
 }
 module.exports._t = { mirrors, privateIp, sniff, safe };
