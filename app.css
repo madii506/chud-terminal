@@ -655,3 +655,16 @@ html.fs .fs-x .kbd{margin:0}
 /* v8: a hairline ring so dark logos (Fartcoin, ETH) read as a coin, not an empty hole */
 img.ic,img.ci,.tok-ic{box-sizing:border-box;border:1px solid rgba(255,255,255,.16)}
 .tok-ic img{border:0}
+
+/* v9: the hidden attribute always wins (a display rule was keeping the empty chart overlay over the chart, blocking its crosshair, and the limit-price field showing in market mode) */
+[hidden]{display:none!important}
+
+/* v9: the $CHUD contract, first thing on the terminal */
+.tick-row{display:flex;gap:6px;align-items:stretch;min-width:0;margin-bottom:10px}
+.tick-row .tickers{flex:1;min-width:0;margin-bottom:0}
+.ca-chip{flex:none;display:inline-flex;align-items:center;gap:8px;padding:6px 11px 6px 7px;border:1px solid rgba(58,222,124,.45);border-radius:10px;background:var(--p1);color:var(--mute);font-size:12px;cursor:pointer;transition:border-color .2s,color .2s}
+.ca-chip img{width:18px;height:18px;border-radius:50%}
+.ca-chip b{color:var(--ink);font-weight:700}
+.ca-chip em{font-style:normal;color:var(--g);font-size:11px}
+.ca-chip:hover{border-color:var(--g);color:var(--ink)}
+@media (max-width:620px){.ca-chip em{display:none}}

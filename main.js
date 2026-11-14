@@ -102,6 +102,7 @@ if (CONFIG.x) { const x = $('#navX'); x.hidden = false; x.href = /^https?:/.test
 if (CONFIG.ca) {
   $('#caBox').hidden = false; $('#caTxt').textContent = CONFIG.ca;
   $('#caCopy').onclick = () => copy(CONFIG.ca);
+  const cc = $('#caChip'); cc.hidden = false; $('#caChipTxt').textContent = short(CONFIG.ca); cc.onclick = () => copy(CONFIG.ca);
   $('#caBuy').href = 'https://pump.fun/coin/' + CONFIG.ca; $('#caChart').href = 'https://dexscreener.com/solana/' + CONFIG.ca;
 }
 
@@ -192,6 +193,7 @@ const ACTIONS = [
   ['Full-screen terminal', 'F', 'nothing but the desk', tools.full],
   ['Settings', ',', 'slippage, leverage, intro, layout', tools.settings],
   ['Keyboard shortcuts', '?', 'every key the terminal knows', tools.keys],
+  ...(CONFIG.ca ? [['Copy the $CHUD CA', '$', short(CONFIG.ca), () => copy(CONFIG.ca)], ['Buy $CHUD on pump.fun', '↗', 'opens pump.fun', () => window.open('https://pump.fun/coin/' + CONFIG.ca, '_blank', 'noopener')]] : []),
   ['Replay the intro', '▶', 'walk the gallery again', tools.replay],
   ['Sound on or off', '♪', 'for the intro', tools.sound],
   ['FAQ', '?', 'questions chuds ask', () => scrollTo('#faq', { offset: -10 })],
